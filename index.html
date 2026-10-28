@@ -96,6 +96,7 @@ label.check{flex-direction:row;align-items:center;gap:10px;font-weight:500}
 label.check input{width:20px;height:20px;accent-color:var(--blue);flex:none}
 select,input[type=number],input[type=text],input[type=tel],input[type=email],input[type=date]{font:inherit;padding:10px 12px;border-radius:10px;border:1px solid var(--rule);background:var(--paper);color:var(--ink);width:100%}
 .hint{font-size:13px;color:var(--muted);font-weight:400}
+.req::after{content:" *";color:var(--bad);font-weight:700}
 .callout{border-radius:10px;padding:10px 12px;font-size:14px;background:var(--blue-soft)}
 .callout.line{background:var(--warn-soft);color:var(--warn)}
 .callout.err{background:var(--bad-soft);color:var(--bad)}
@@ -206,7 +207,7 @@ function seed(){
       {id:"u3",role:"Student",name:"Sarah Miller",sid:"200201",claim:"demo2"},
       {id:"u7",role:"Student",name:"Mary Johnson",sid:"",claim:""},
       {id:"u8",role:"Student",name:"Robert Davis",sid:"100150",claim:"haa",dob:"2011-01-09",email:"robert.davis@example.com"},
-      {id:"u9",role:"Donor",name:"Pat Rivera",org:"Rivera Family Hardware",phone:"(555) 010-0142",email:"pat@example.com"},
+      {id:"u9",role:"Donor",name:"Pat Rivera",org:"Rivera Family Hardware",phone:"(555) 010-0142",email:"pat@example.com",address:"45 Main St, Houston, TX 77002"},
       {id:"u4",role:"School Admin",name:"Mr. Castillo",school:"haa"},
       {id:"u5",role:"School Admin",name:"Ms. Oak",school:"demo2"},
       {id:"u6",role:"ReSchool Admin",name:"Tabitha"}
@@ -232,6 +233,9 @@ function seed(){
 }
 function load(){let d=null;try{const s=localStorage.getItem(KEY);if(s)d=JSON.parse(s)}catch(e){}d=d||mem||seed();if(!d.baseline)d.baseline=copy(d.inventory);if(!d.joinRequests)d.joinRequests=[];
   d.users.forEach(u=>{if(u.role==="District Admin")u.role="ReSchool Admin"}); // renamed role
+  // Rosters saved before birthdays existed: fill them in from the sample setup when the student matches
+  const sd=seed(), same=(a,b)=>String(a||"").trim().toLowerCase()===String(b||"").trim().toLowerCase();
+  for(const sc in d.rosters)(d.rosters[sc]||[]).forEach(e=>{if(!e.dob){const m=(sd.rosters[sc]||[]).find(x=>x.sid===e.sid&&same(x.first,e.first)&&same(x.last,e.last));if(m)e.dob=m.dob}});
   return d}
 function save(){mem=db;try{localStorage.setItem(KEY,JSON.stringify(db))}catch(e){}}
 let db=load();
@@ -384,17 +388,17 @@ function validateClaim(u,s,sid){
 }
 const norm=t=>String(t||"").trim().toLowerCase().replace(/\s+/g," ");
 // Checks a student's details against the rosters. Throws if they can't claim this ID.
-function verifyStudent(u,s,sid,first,last,dob){
+function verifyStudent(u,s,sid,name,dob){
   validateClaim(u,s,sid);
-  if(!first||!last) fail("Enter your first and last name.");
+  if(!norm(name)) fail("Enter your first and last name.");
   if(!dob) fail("Enter your date of birth.");
   const e=rosterEntry(s,sid);
   if(!e){
-    if(db.schools.some(x=>x.id!==s&&rosterEntry(x.id,sid))) fail("That student ID doesn't match the school you selected. Check the school, or leave the ID blank and sign up with your name only.");
+    if(db.schools.some(x=>x.id!==s&&rosterEntry(x.id,sid))) fail("That student ID doesn't match the school you selected. Check the school, or leave the ID blank for now.");
     return "unlisted";
   }
-  const ok=norm(e.first)===norm(first)&&norm(e.last)===norm(last)&&(!e.dob||e.dob===dob);
-  if(!ok) fail("Those details don't match the school's records for that student ID. Check your name and date of birth, or leave the ID blank and sign up with your name only.");
+  const ok=norm(`${e.first} ${e.last}`)===norm(name)&&(!e.dob||e.dob===dob);
+  if(!ok) fail("Those details don't match the school's records for that student ID. Check the ID, name and date of birth, or ask your school office.");
   return "listed";
 }
 function claimSid(u,s,sid,dob){ // returns "matched" or "pending". Call verifyStudent first.
@@ -407,8 +411,9 @@ function claimSid(u,s,sid,dob){ // returns "matched" or "pending". Call verifySt
   return "pending";
 }
 // Optional contact details. Blank is fine; anything entered must look right.
+function updateContact(u,c){Object.assign(u,cleanContact(c,u.role==="Donor"));save()}
 function cleanContact(c,withOrg){
-  const out={phone:(c.phone||"").trim(),email:(c.email||"").trim()};
+  const out={phone:(c.phone||"").trim(),email:(c.email||"").trim(),address:(c.address||"").trim().slice(0,120)};
   if(withOrg) out.org=(c.org||"").trim();
   if(out.email&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(out.email)) fail("That email address doesn't look right.");
   if(out.phone&&(out.phone.replace(/\D/g,"").length<7||/[^0-9()+\-.\s]/.test(out.phone))) fail("That phone number doesn't look right.");
@@ -418,7 +423,7 @@ function signUp(first,last,sid,s,dob,contact={}){
   first=first.trim(); last=last.trim(); sid=sid.trim();
   if(!first||!last) fail("Enter your first and last name.");
   const u={id:"u"+(db.seq+1),role:"Student",name:`${first} ${last}`,sid:"",claim:"",...cleanContact(contact,false)};
-  if(sid) verifyStudent(u,s,sid,first,last,dob);
+  if(sid) verifyStudent(u,s,sid,`${first} ${last}`,dob);
   db.seq++;
   const result=sid?claimSid(u,s,sid,dob):"none";
   db.users.push(u); save(); return {u,result};
@@ -438,14 +443,15 @@ function denyAccess(j){db.joinRequests=db.joinRequests.filter(x=>x!==j);save()}
 
 function contactLine(u){
   if(!u) return "";
-  const bits=[u.org,u.phone,u.email].filter(Boolean).map(esc);
+  const bits=[u.org,u.phone,u.email,u.address].filter(Boolean).map(esc);
   return bits.length?`<div class="meta">${bits.join(" · ")}</div>`:"";
 }
 const fmtDob=d=>d?new Date(d+"T12:00:00").toLocaleDateString(undefined,{month:"short",day:"numeric",year:"numeric"}):"";
-const contactInputs=(p,u={},withOrg)=>`${withOrg?`<label for="${p}-org">Business or organization <span class="hint">(optional)</span><input id="${p}-org" type="text" maxlength="60" autocomplete="organization" value="${esc(u.org||"")}"></label>`:""}
-  <div class="two"><label for="${p}-phone">Phone <span class="hint">(optional)</span><input id="${p}-phone" type="tel" maxlength="20" autocomplete="tel" value="${esc(u.phone||"")}"></label>
-  <label for="${p}-email">Email <span class="hint">(optional)</span><input id="${p}-email" type="email" maxlength="80" autocomplete="email" value="${esc(u.email||"")}"></label></div>`;
-const readContact=p=>({org:$(`#${p}-org`)?$(`#${p}-org`).value:"",phone:$(`#${p}-phone`).value,email:$(`#${p}-email`).value});
+const contactInputs=(p,u={},withOrg)=>`${withOrg?`<label for="${p}-org">Business or organization<input id="${p}-org" type="text" maxlength="60" autocomplete="organization" value="${esc(u.org||"")}"></label>`:""}
+  <div class="two"><label for="${p}-phone">Phone<input id="${p}-phone" type="tel" maxlength="20" autocomplete="tel" value="${esc(u.phone||"")}"></label>
+  <label for="${p}-email">Email<input id="${p}-email" type="email" maxlength="80" autocomplete="email" value="${esc(u.email||"")}"></label></div>
+  <label for="${p}-address">Address<input id="${p}-address" type="text" maxlength="120" autocomplete="street-address" value="${esc(u.address||"")}"></label>`;
+const readContact=p=>({org:$(`#${p}-org`)?$(`#${p}-org`).value:"",phone:$(`#${p}-phone`).value,email:$(`#${p}-email`).value,address:$(`#${p}-address`).value});
 
 /* ---------- School branding ---------- */
 function colorsOf(s){const sc=typeof s==="string"?school(s):s;return {primary:sc.primary||DEFAULT_COLORS.primary,secondary:sc.secondary||DEFAULT_COLORS.secondary}}
@@ -475,8 +481,8 @@ function render(){
   $("#who").innerHTML=me?`<span>${esc(displayName(me))} · <b>${ROLE_LABEL[me.role]}</b>${me.role==="School Admin"?", "+esc(school(me.school).name):me.role==="Student"&&activeSchool(me)?", "+esc(school(activeSchool(me)).name):""}</span><button class="small" onclick="logout()">Sign out</button>`:"";
   if(!me) return authScreen==="signup"?renderSignup():authScreen==="donor"?renderDonorSignup():renderLogin();
   const T={
-    "Student":[["home","Home",sHome],["donate","Donate",sDonate],["request","Request",sRequest],["activity","My activity",sActivity]],
-    "Donor":[["home","Home",oHome],["donate","Donate",sDonate],["activity","My donations",sActivity]],
+    "Student":[["home","Home",sHome],["donate","Donate",sDonate],["request","Request",sRequest],["activity","My activity",sActivity],["account","My account",sAccount]],
+    "Donor":[["home","Home",oHome],["donate","Donate",sDonate],["activity","My donations",sActivity],["account","My account",sAccount]],
     "School Admin":[["home","Dashboard",aHome],["pledges","Donations",aPledges],["requests","Requests",aRequests],["supplies","Supplies",aSupplies],["roster","Students",aRoster]],
     "ReSchool Admin":[["home","Overview",dHome],["schools","Schools",dSchools],["supplies","Supplies",aSupplies],["roster","Rosters",aRoster],["users","Users",dUsers]]
   }[me.role];
@@ -511,16 +517,17 @@ function renderSignup(){
   <p class="sub">Add your student ID to request supplies from your school. No ID yet? Leave it blank. You can still donate, and add your ID later.</p>
   <form class="card" onsubmit="doSignUp(event)">
     <div class="two">
-      <label for="su-first">First name<input id="su-first" type="text" maxlength="30" autocomplete="given-name" required></label>
-      <label for="su-last">Last name<input id="su-last" type="text" maxlength="30" autocomplete="family-name" required></label>
+      <label for="su-first"><span class="req">First name</span><input id="su-first" type="text" maxlength="30" autocomplete="given-name" required></label>
+      <label for="su-last"><span class="req">Last name</span><input id="su-last" type="text" maxlength="30" autocomplete="family-name" required></label>
     </div>
     <div class="two">
-      <label for="su-sid">Student ID <span class="hint">(optional)</span><input id="su-sid" type="text" inputmode="numeric" autocomplete="off" maxlength="12" placeholder="e.g. 100103" oninput="claimWarn='';resetWarn('su');$('#su-dob-wrap').hidden=!this.value.trim()"></label>
+      <label for="su-sid">Student ID<input id="su-sid" type="text" inputmode="numeric" autocomplete="off" maxlength="12" placeholder="e.g. 100103" oninput="claimWarn='';resetWarn('su');$('#su-dob-wrap').hidden=!this.value.trim()"></label>
       <label for="su-school">School<select id="su-school" onchange="claimWarn='';resetWarn('su')">${db.schools.map(s=>`<option value="${s.id}">${esc(s.name)}</option>`).join("")}</select></label>
     </div>
-    <label for="su-dob" id="su-dob-wrap" hidden>Date of birth <span class="hint">(needed with a student ID, so no one else can use your ID)</span><input id="su-dob" type="date" max="${new Date().toISOString().slice(0,10)}"></label>
+    <label for="su-dob" id="su-dob-wrap" hidden><span class="req">Date of birth</span><input id="su-dob" type="date" max="${new Date().toISOString().slice(0,10)}"><span class="hint">Needed with a student ID, so no one else can use your ID.</span></label>
     <div class="callout line" id="su-warn" hidden></div>
     ${contactInputs("su",{},false)}
+    <span class="hint"><span class="req"></span> Required</span>
     <div class="callout err" id="su-err" hidden></div>
     <div class="actions"><button class="primary" type="submit" id="su-go">Create account</button><button type="button" class="ghost" onclick="authScreen='login';render()">Back</button></div>
   </form>
@@ -531,11 +538,11 @@ function renderDonorSignup(){
   <p class="sub">You don't need to be connected to a school. Parents, neighbors, businesses and community groups can donate supplies to any school.</p>
   <form class="card" onsubmit="doDonorSignUp(event)">
     <div class="two">
-      <label for="dn-first">First name<input id="dn-first" type="text" maxlength="30" autocomplete="given-name" required></label>
-      <label for="dn-last">Last name<input id="dn-last" type="text" maxlength="30" autocomplete="family-name" required></label>
+      <label for="dn-first"><span class="req">First name</span><input id="dn-first" type="text" maxlength="30" autocomplete="given-name" required></label>
+      <label for="dn-last"><span class="req">Last name</span><input id="dn-last" type="text" maxlength="30" autocomplete="family-name" required></label>
     </div>
     ${contactInputs("dn",{},true)}
-    <span class="hint">Contact details help the school thank you or arrange a drop-off.</span>
+    <span class="hint"><span class="req"></span> Required. Contact details are optional and help the school thank you or arrange a drop-off.</span>
     <div class="callout err" id="dn-err" hidden></div>
     <div class="actions"><button class="primary" type="submit">Create account</button><button type="button" class="ghost" onclick="authScreen='login';render()">Back</button></div>
   </form>`;
@@ -550,7 +557,7 @@ function needsWarn(prefix,s,sid){
   w.hidden=false; $(`#${prefix}-go`).textContent=prefix==="su"?"Sign up anyway":"Send for approval";
   return true;
 }
-function resetWarn(prefix){const w=$(`#${prefix}-warn`);if(w)w.hidden=true;const b=$(`#${prefix}-go`);if(b)b.textContent=prefix==="su"?"Create account":"Link ID"}
+function resetWarn(prefix){const w=$(`#${prefix}-warn`);if(w)w.hidden=true;const b=$(`#${prefix}-go`);if(b)b.textContent=prefix==="su"?"Create account":"Add student ID"}
 
 /* ---------- Item picker (donations and requests) ---------- */
 function cartForm(mode,s,submitLabel){
@@ -650,16 +657,7 @@ function sDonate(){
 function sRequest(){
   cart={mode:null};
   const st=studentState(me);
-  const [fn="",...ln]=(me.name||"").split(" ");
-  const link=`<form class="card" onsubmit="doLink(event)"><div class="two">
-    <label for="l-first">First name<input id="l-first" type="text" maxlength="30" value="${esc(fn)}" required></label>
-    <label for="l-last">Last name<input id="l-last" type="text" maxlength="30" value="${esc(ln.join(" "))}" required></label></div>
-    <div class="two">
-    <label for="l-sid">Student ID<input id="l-sid" type="text" inputmode="numeric" autocomplete="off" maxlength="12" required oninput="claimWarn='';resetWarn('l')"></label>
-    <label for="l-school">School<select id="l-school" onchange="claimWarn='';resetWarn('l')">${db.schools.map(s=>`<option value="${s.id}" ${s.id===me.claim?"selected":""}>${esc(s.name)}</option>`).join("")}</select></label></div>
-    <label for="l-dob">Date of birth<input id="l-dob" type="date" required max="${new Date().toISOString().slice(0,10)}" value="${esc(me.dob||"")}"></label>
-    <div class="callout line" id="l-warn" hidden></div>
-    <div class="actions"><button class="primary" type="submit" id="l-go">Link ID</button></div></form>`;
+  const link=linkForm();
   const sc=me.claim?esc(school(me.claim).name):"";
   if(st==="none") return `<h1>Request supplies</h1><p class="sub">To request supplies, add the student ID your school gave you.</p>${link}`;
   if(st==="pending") return `<h1>Request supplies</h1><div class="callout line">Your student ID ${esc(me.sid)} is waiting for ${sc} to confirm it. Once the school office approves it, you can request supplies here. You can still donate.</div>`;
@@ -668,6 +666,36 @@ function sRequest(){
   const s=activeSchool(me);
   return `<h1>Request supplies</h1><div style="margin:12px 0">${banner(s)}</div><p class="sub">Out-of-stock items can still be requested. You'll be placed in line and get them when they're donated.</p>
   ${cartForm("request",s,"Send request")}`;
+}
+// Add a student ID to an existing account. The name on the account must match the roster.
+function linkForm(){
+  return `<form class="card" onsubmit="doLink(event)">
+    <div class="meta">Name on this account: <b>${esc(me.name)}</b>. It must match your school's records.</div>
+    <div class="two">
+    <label for="l-sid"><span class="req">Student ID</span><input id="l-sid" type="text" inputmode="numeric" autocomplete="off" maxlength="12" required oninput="claimWarn='';resetWarn('l')"></label>
+    <label for="l-school"><span class="req">School</span><select id="l-school" onchange="claimWarn='';resetWarn('l')">${db.schools.map(s=>`<option value="${s.id}" ${s.id===me.claim?"selected":""}>${esc(s.name)}</option>`).join("")}</select></label></div>
+    <label for="l-dob"><span class="req">Date of birth</span><input id="l-dob" type="date" required max="${new Date().toISOString().slice(0,10)}" value="${esc(me.dob||"")}"></label>
+    <div class="callout line" id="l-warn" hidden></div>
+    <div class="actions"><button class="primary" type="submit" id="l-go">Add student ID</button></div></form>`;
+}
+// My account: students and donors update their own contact details, and students can add an ID
+function sAccount(){
+  cart={mode:null};
+  const isStudent=me.role==="Student", st=isStudent?studentState(me):null, sc=me.claim?esc(school(me.claim).name):"", id=`<b class="qty">${esc(me.sid||"")}</b>`;
+  const status={
+    active:`<div class="callout">Student ID ${id} is active at ${sc}.</div>`,
+    inactive:`<div class="callout err">Student ID ${id} is marked inactive at ${sc}. Ask the school office to reactivate it.</div>`,
+    pending:`<div class="callout line">Student ID ${id} is waiting for ${sc} to confirm it.</div>`,
+    missing:`<div class="callout err">${sc} didn't confirm student ID ${id}. Check the number and enter it again.</div>`,
+    none:`<p class="sub">No student ID yet. Add one to request supplies from your school.</p>`}[st];
+  return `<h1>My account</h1>
+  <div class="card"><div><div class="eyebrow">Name</div><b>${esc(displayName(me))}</b></div>
+  <span class="hint">To change your name, ask ${isStudent&&me.claim?"your school office":"a ReSchool admin"}.${isStudent?" It has to match your school's records.":""}</span></div>
+  ${isStudent?`<h2>School</h2>${me.claim&&st!=="none"?`<div style="margin-bottom:12px">${banner(me.claim)}</div>`:""}${status}${st==="none"||st==="missing"?`<div style="margin-top:12px">${linkForm()}</div>`:""}`:""}
+  <h2>Contact details</h2>
+  <form class="card" onsubmit="doSaveContact(event)">${contactInputs("ac",me,me.role==="Donor")}
+  <span class="hint">All optional. ${me.role==="Donor"?"Schools see these on your donations.":"Your school sees these on your requests."}</span>
+  <div class="actions"><button class="primary" type="submit">Save changes</button></div></form>`;
 }
 function sActivity(){
   cart={mode:null};
@@ -819,11 +847,12 @@ function doSignUp(e){
   const sid=$("#su-sid").value.trim(), s=$("#su-school").value, first=$("#su-first").value.trim(), last=$("#su-last").value.trim(), dob=$("#su-dob").value;
   try{
     cleanContact(readContact("su"),false);
-    if(sid){verifyStudent({id:null},s,sid,first,last,dob); if(needsWarn("su",s,sid)) return}
+    if(sid){verifyStudent({id:null},s,sid,`${first} ${last}`,dob); if(needsWarn("su",s,sid)) return}
     const {u}=signUp(first,last,sid,s,dob,readContact("su"));
     claimWarn=""; login(u.id); toast(claimToast(u));
   }catch(x){err.textContent=x.message;err.hidden=false}
 }
+function doSaveContact(e){e.preventDefault();try{updateContact(me,readContact("ac"));toast("Contact details saved");render()}catch(x){toast(x.message)}}
 function doDonorSignUp(e){
   e.preventDefault();
   try{const u=signUpDonor($("#dn-first").value,$("#dn-last").value,readContact("dn"));login(u.id);toast(`Welcome, ${u.name.split(" ")[0]}! Pick a school to donate to.`)}
@@ -831,8 +860,8 @@ function doDonorSignUp(e){
 }
 function doLink(e){
   e.preventDefault();
-  const sid=$("#l-sid").value.trim(), s=$("#l-school").value, first=$("#l-first").value.trim(), last=$("#l-last").value.trim(), dob=$("#l-dob").value;
-  try{verifyStudent(me,s,sid,first,last,dob); if(needsWarn("l",s,sid)) return; me.name=`${first} ${last}`; claimSid(me,s,sid,dob); save(); claimWarn=""; toast(claimToast(me)); render()}
+  const sid=$("#l-sid").value.trim(), s=$("#l-school").value, dob=$("#l-dob").value;
+  try{verifyStudent(me,s,sid,me.name,dob); if(needsWarn("l",s,sid)) return; claimSid(me,s,sid,dob); save(); claimWarn=""; toast(claimToast(me)); render()}
   catch(x){toast(x.message)}
 }
 // Two taps to cancel, so a stray tap doesn't lose someone's place in line
@@ -962,10 +991,10 @@ function readIcon(input){
 function openRoster(s,k){
   const e=k!=null?db.rosters[s][k]:{sid:"",first:"",last:"",dob:"",active:true};
   openSheet(k!=null?"Edit student ID":"Add student ID",`
-    <label for="ro-sid">Student ID<input id="ro-sid" type="text" maxlength="12" value="${esc(e.sid)}" autocomplete="off" required></label>
-    <div class="two"><label for="ro-first">First name<input id="ro-first" type="text" maxlength="30" value="${esc(e.first)}" required></label>
-    <label for="ro-last">Last name<input id="ro-last" type="text" maxlength="30" value="${esc(e.last)}" required></label></div>
-    <label for="ro-dob">Date of birth <span class="hint">(students must match it to sign up with this ID)</span><input id="ro-dob" type="date" value="${esc(e.dob||"")}"></label>
+    <label for="ro-sid"><span class="req">Student ID</span><input id="ro-sid" type="text" maxlength="12" value="${esc(e.sid)}" autocomplete="off" required></label>
+    <div class="two"><label for="ro-first"><span class="req">First name</span><input id="ro-first" type="text" maxlength="30" value="${esc(e.first)}" required></label>
+    <label for="ro-last"><span class="req">Last name</span><input id="ro-last" type="text" maxlength="30" value="${esc(e.last)}" required></label></div>
+    <label for="ro-dob">Date of birth<input id="ro-dob" type="date" value="${esc(e.dob||"")}"><span class="hint">Students must match the name and date of birth to sign up with this ID.</span></label>
     <label class="check"><input type="checkbox" id="ro-active" ${e.active?"checked":""}> Active (can request supplies)</label>`,
   k!=null?"Save":"Add",()=>{
     const sid=$("#ro-sid").value.trim();
@@ -986,7 +1015,7 @@ function openUser(id){
     <label for="us-name">Name <span class="hint" id="us-name-hint"></span><input id="us-name" type="text" maxlength="40" value="${esc(u.name)}"></label>
     <label for="us-role">Role<select id="us-role" onchange="roleFields()" ${self?"disabled":""}>${ROLES.map(r=>`<option value="${r}" ${u.role===r?"selected":""}>${ROLE_LABEL[r]}</option>`).join("")}</select></label>
     <label for="us-school" id="us-school-wrap"><span id="us-school-label">School</span><select id="us-school">${db.schools.map(s=>`<option value="${s.id}" ${sel===s.id?"selected":""}>${esc(s.name)}</option>`).join("")}</select></label>
-    <label for="us-sid" id="us-sid-wrap">Student ID <span class="hint">(optional; if it isn't on the roster it goes to the school for approval)</span><input id="us-sid" type="text" maxlength="12" value="${esc(u.sid||"")}" autocomplete="off"></label>
+    <label for="us-sid" id="us-sid-wrap">Student ID<input id="us-sid" type="text" maxlength="12" value="${esc(u.sid||"")}" autocomplete="off"><span class="hint">If it isn't on the school's roster, it goes to the school for approval.</span></label>
     <div id="us-contact" style="display:flex;flex-direction:column;gap:14px">${contactInputs("us",u,true)}</div>`,
   id?"Save":"Add user",()=>{
     const role=self?u.role:$("#us-role").value, name=$("#us-name").value.trim(), s=$("#us-school").value;

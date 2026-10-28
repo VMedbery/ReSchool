@@ -17,7 +17,8 @@ Some students start the year with more supplies than they need, and others go wi
 - **School admins** choose which items can be donated or requested, set the most allowed per request (and optionally per donation), and manage their student ID roster (active or inactive).
 - **Students sign up** with their first and last name, plus a student ID and school if they have one. To use an ID that's on the school's roster, the name and date of birth must match the roster. An ID on a different school's roster is refused, and an ID on no roster is sent to the school admin for approval.
 - **Students can cancel** anything not yet approved, but can't edit a request, so no one can jump the line.
-- **Optional contact details**: donors can add a business name, phone and email; students can add a phone and email.
+- **Optional contact details**: donors can add a business name, phone, email and address; students can add a phone, email and address.
+- **My account**: students and donors update their own contact details. Students who signed up without an ID can add one later, as long as the name on the account and their date of birth match the school's roster and no other account at that school uses the ID.
 - **Donors** can sign up without any connection to a school and donate to any school.
 - **Schools have their own look**: an uploaded icon plus primary and secondary colors.
 - **A ReSchool admin** manages schools, supply items, users and rosters across all schools, resets the demo, and exports the setup.
