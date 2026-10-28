@@ -1,0 +1,824 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ReSchool</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Figtree:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+/* Layout: one narrow phone-first column; ruled-notebook header band; cards only for actionable rows */
+:root{
+  --paper:#f7f8fb; --sheet:#ffffff; --ink:#1b2440; --muted:#5d6782; --rule:#dfe4ef;
+  --blue:#2d4fd6; --blue-soft:#e6ebfd; --pencil:#f4b400; --pencil-soft:#fff3cc; --pencil-ink:#6b4d00;
+  --ok:#1f8a4c; --ok-soft:#e2f4ea; --warn:#b05a00; --warn-soft:#fde6cf; --bad:#c23a3a; --bad-soft:#fbe5e5;
+  --scrim:rgba(10,14,30,.5);
+  --display:"Bricolage Grotesque",ui-rounded,system-ui,sans-serif;
+  --body:"Figtree",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --paper:#11152a; --sheet:#1a2038; --ink:#e8ecf8; --muted:#9ba5c4; --rule:#2c3454;
+  --blue:#8aa2ff; --blue-soft:#232d55; --pencil:#ffc933; --pencil-soft:#3a3010; --pencil-ink:#ffd666;
+  --ok:#5fd394; --ok-soft:#173527; --warn:#f6a75a; --warn-soft:#3d2610; --bad:#ff8a8a; --bad-soft:#3d1b1f; --scrim:rgba(0,0,0,.6); color-scheme:dark}}
+:root[data-theme="dark"]{
+  --paper:#11152a; --sheet:#1a2038; --ink:#e8ecf8; --muted:#9ba5c4; --rule:#2c3454;
+  --blue:#8aa2ff; --blue-soft:#232d55; --pencil:#ffc933; --pencil-soft:#3a3010; --pencil-ink:#ffd666;
+  --ok:#5fd394; --ok-soft:#173527; --warn:#f6a75a; --warn-soft:#3d2610; --bad:#ff8a8a; --bad-soft:#3d1b1f; --scrim:rgba(0,0,0,.6); color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--paper);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.5}
+.wrap{max-width:680px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:0 48px}
+header.band{background:var(--sheet);border-bottom:1px solid var(--rule);background-image:repeating-linear-gradient(to bottom,transparent 0 23px,var(--rule) 23px 24px)}
+.band .wrap{padding-block:16px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.logo{font-family:var(--display);font-weight:800;font-size:26px;letter-spacing:-.02em;display:flex;align-items:center;gap:8px}
+.logo i{display:inline-block;width:26px;height:8px;background:var(--pencil);border-radius:2px 8px 8px 2px;position:relative}
+.logo i::after{content:"";position:absolute;right:-7px;top:0;border-left:7px solid var(--pencil);border-top:4px solid transparent;border-bottom:4px solid transparent}
+.logo span{color:var(--blue)}
+.who{display:flex;align-items:center;gap:8px;font-size:13px;flex-wrap:wrap}
+button{font:inherit;cursor:pointer;border-radius:10px;border:1px solid var(--rule);background:var(--sheet);color:var(--ink);padding:9px 14px;font-weight:600}
+button:focus-visible,select:focus-visible,input:focus-visible{outline:3px solid var(--pencil);outline-offset:2px}
+button.primary{background:var(--blue);border-color:var(--blue);color:var(--sheet)}
+button.ghost{background:transparent}
+button.danger{color:var(--bad)}
+button.armed{background:var(--bad);border-color:var(--bad);color:var(--sheet)}
+button:disabled{opacity:.45;cursor:not-allowed}
+.small{padding:6px 10px;font-size:13px}
+h1{font-family:var(--display);font-weight:800;font-size:28px;line-height:1.15;letter-spacing:-.02em;margin:24px 0 4px;text-wrap:balance}
+h2{font-family:var(--display);font-weight:600;font-size:19px;margin:28px 0 10px;text-wrap:balance}
+.sub{color:var(--muted);margin:0 0 16px;max-width:60ch}
+.eyebrow{font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);font-weight:700}
+nav.tabs{display:flex;gap:6px;overflow-x:auto;margin-top:16px;padding-bottom:2px}
+nav.tabs button{white-space:nowrap;border-radius:999px}
+nav.tabs button[aria-current="true"]{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.users{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px}
+.user{text-align:left;padding:14px;display:flex;flex-direction:column;gap:2px}
+.user:hover{border-color:var(--blue)}
+.role{font-size:12px;font-weight:700;color:var(--blue)}
+.role.admin{color:var(--warn)}
+.role.district{color:var(--ok)}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.stat{background:var(--sheet);border:1px solid var(--rule);border-radius:12px;padding:12px 14px;min-width:0}
+.stat .n{font-family:var(--mono);font-weight:700;font-size:26px;font-variant-numeric:tabular-nums}
+@media (max-width:460px){.stats{grid-template-columns:repeat(2,1fr)}}
+.list{display:flex;flex-direction:column;gap:10px}
+.row{background:var(--sheet);border:1px solid var(--rule);border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:8px;min-width:0}
+.row .top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap}
+.row .title{font-weight:700}
+.ln{display:flex;justify-content:space-between;align-items:center;gap:8px 12px;flex-wrap:wrap;padding-top:10px;border-top:1px solid var(--rule)}
+.ln .what{min-width:0}
+.meta{color:var(--muted);font-size:13px}
+.qty{font-family:var(--mono);font-variant-numeric:tabular-nums;font-weight:500}
+.actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.pill{font-size:12px;font-weight:700;padding:3px 9px;border-radius:99px;white-space:nowrap;border:0}
+button.pill{cursor:pointer}
+.p-wait{background:var(--blue-soft);color:var(--blue)}
+.p-part{background:var(--pencil-soft);color:var(--pencil-ink)}
+.p-done{background:var(--ok-soft);color:var(--ok)}
+.p-bad{background:var(--bad-soft);color:var(--bad)}
+.p-line{background:var(--warn-soft);color:var(--warn)}
+.p-off{background:var(--rule);color:var(--muted)}
+.tag{font-size:11px;font-weight:700;padding:2px 7px;border-radius:6px;background:var(--pencil-soft);color:var(--pencil-ink);white-space:nowrap}
+.tag.hot{background:var(--warn-soft);color:var(--warn)}
+.tag.off{background:var(--rule);color:var(--muted)}
+form.card,.card{background:var(--sheet);border:1px solid var(--rule);border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:14px}
+label{display:flex;flex-direction:column;gap:6px;font-weight:600;font-size:14px}
+label.check{flex-direction:row;align-items:center;gap:10px;font-weight:500}
+label.check input{width:20px;height:20px;accent-color:var(--blue);flex:none}
+select,input[type=number],input[type=text]{font:inherit;padding:10px 12px;border-radius:10px;border:1px solid var(--rule);background:var(--paper);color:var(--ink);width:100%}
+.hint{font-size:13px;color:var(--muted);font-weight:400}
+.callout{border-radius:10px;padding:10px 12px;font-size:14px;background:var(--blue-soft)}
+.callout.line{background:var(--warn-soft);color:var(--warn)}
+.callout.err{background:var(--bad-soft);color:var(--bad)}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media (max-width:460px){.two{grid-template-columns:1fr}}
+.or{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase}
+.or::before,.or::after{content:"";flex:1;height:1px;background:var(--rule)}
+.cart{display:flex;flex-direction:column}
+.cartrow{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--rule)}
+.cartrow:last-child{border-bottom:0}
+.cartrow .what{min-width:0}
+.cartrow.picked b{color:var(--blue)}
+.mini{display:flex;align-items:center;gap:6px;flex:none}
+.mini button{width:38px;height:38px;padding:0;font-size:18px}
+.mini input{width:54px;text-align:center;font-family:var(--mono);padding:8px 4px}
+.sumbar{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;border-top:1px solid var(--rule);padding-top:14px}
+.tablebox{overflow-x:auto;border:1px solid var(--rule);border-radius:12px;background:var(--sheet)}
+table{width:100%;border-collapse:collapse}
+th,td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--rule);vertical-align:middle}
+th{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);white-space:nowrap}
+td.num,th.num{text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums}
+td.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+tr:last-child td{border-bottom:0}
+td.zero{color:var(--muted)}
+td.short{color:var(--warn);font-weight:700}
+.empty{color:var(--muted);padding:18px;border:1px dashed var(--rule);border-radius:12px;text-align:center}
+.note{background:var(--blue-soft);border-radius:12px;padding:12px 14px;font-size:14px}
+.need{display:flex;justify-content:space-between;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid var(--rule)}
+.need:last-child{border-bottom:0}
+.needs{background:var(--sheet);border:1px solid var(--rule);border-radius:12px;padding:4px 14px}
+.info{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.inline{display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap}
+.inline label{flex:1;min-width:160px}
+.scrim{position:fixed;inset:0;background:var(--scrim);display:flex;align-items:flex-end;justify-content:center;z-index:20;padding:16px;padding-bottom:max(16px,env(safe-area-inset-bottom,0px));overflow-y:auto}
+.sheet{background:var(--sheet);border-radius:16px;padding:20px;width:100%;max-width:460px;display:flex;flex-direction:column;gap:14px;margin:auto 0 0}
+.sheet h3{font-family:var(--display);margin:0;font-size:20px}
+.stepper{display:flex;align-items:center;gap:10px}
+.stepper input{text-align:center;font-family:var(--mono);font-size:20px}
+.stepper button{width:48px;height:48px;font-size:22px;padding:0;flex:none}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:max(20px,calc(env(safe-area-inset-bottom,0px) + 12px));background:var(--ink);color:var(--paper);padding:10px 16px;border-radius:10px;font-weight:600;z-index:30;max-width:calc(100% - 32px)}
+.foot{margin-top:32px;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;color:var(--muted);font-size:13px;align-items:center}
+@media (min-width:640px){.scrim{align-items:center}.sheet{margin:auto}}
+@media (prefers-reduced-motion:no-preference){.row,.toast{animation:in .18s ease-out}@keyframes in{from{transform:translateY(4px);opacity:.6}}}
+</style>
+<style>html,body{margin:0}[hidden]{display:none!important}</style>
+</head>
+<body>
+<header class="band"><div class="wrap">
+  <div class="logo"><i></i>Re<span>School</span></div>
+  <div class="who" id="who"></div>
+</div></header>
+<main class="wrap" id="app"></main>
+<div id="modal"></div>
+<div id="toast" class="toast" hidden></div>
+
+<script>
+const KEY="reschool-demo-v3";
+let mem=null;
+const copy=o=>JSON.parse(JSON.stringify(o));
+
+/* ---------- Sample setup ---------- */
+function seed(){
+  const now=Date.now(), ago=h=>new Date(now-h*36e5).toISOString();
+  const items=["Pencils (box)","Pens (pack)","Notebooks","Folders","Glue Sticks","Highlighters","Calculators","Backpacks"];
+  const schools=[
+    {id:"lincoln",name:"Lincoln Middle School",address:"1200 Elm Street"},
+    {id:"riverside",name:"Riverside High School",address:"88 River Road"}
+  ];
+  const catalog={};
+  schools.forEach(s=>{catalog[s.id]={};items.forEach(i=>catalog[s.id][i]={donate:true,request:true,dLimit:20,rLimit:5,star:false})});
+  Object.assign(catalog.lincoln["Calculators"],{donate:false,request:false});
+  Object.assign(catalog.lincoln["Backpacks"],{dLimit:5,rLimit:1});
+  Object.assign(catalog.riverside["Backpacks"],{dLimit:5,rLimit:1});
+  Object.assign(catalog.riverside["Calculators"],{dLimit:5,rLimit:1});
+  catalog.lincoln["Pencils (box)"].star=true;
+  const line=(item,qty)=>({item,qty,approved:0,open:true});
+  const d={
+    items, schools, catalog,
+    inventory:{
+      lincoln:{"Pencils (box)":6,"Pens (pack)":0,"Notebooks":12,"Folders":8,"Glue Sticks":0,"Highlighters":4,"Calculators":0,"Backpacks":2},
+      riverside:{"Pencils (box)":0,"Pens (pack)":10,"Notebooks":5,"Folders":0,"Glue Sticks":7,"Highlighters":0,"Calculators":3,"Backpacks":0}
+    },
+    rosters:{
+      lincoln:[
+        {sid:"100101",first:"Ava",last:"Torres",active:true},
+        {sid:"100102",first:"Jordan",last:"Kim",active:true},
+        {sid:"100103",first:"Sam",last:"Patel",active:true},
+        {sid:"100104",first:"Riley",last:"Nguyen",active:false}
+      ],
+      riverside:[
+        {sid:"200201",first:"Marcus",last:"Lee",active:true},
+        {sid:"200202",first:"Dana",last:"Brooks",active:true}
+      ]
+    },
+    users:[
+      {id:"u1",role:"Student",name:"Ava Torres",sid:"100101",claim:"lincoln"},
+      {id:"u2",role:"Student",name:"Jordan Kim",sid:"100102",claim:"lincoln"},
+      {id:"u3",role:"Student",name:"Marcus Lee",sid:"200201",claim:"riverside"},
+      {id:"u7",role:"Student",name:"Taylor Morgan",sid:"",claim:""},
+      {id:"u8",role:"Student",name:"Chris Diaz",sid:"100150",claim:"lincoln"},
+      {id:"u4",role:"School Admin",name:"Ms. Carter",school:"lincoln"},
+      {id:"u5",role:"School Admin",name:"Mr. Okafor",school:"riverside"},
+      {id:"u6",role:"District Admin",name:"Dr. Reyes"}
+    ],
+    pledges:[
+      {id:"P-1001",user:"u3",school:"lincoln",date:ago(26),closed:false,lines:[{item:"Glue Sticks",qty:10,received:0},{item:"Folders",qty:5,received:0}]},
+      {id:"P-1002",user:"u3",school:"riverside",date:ago(60),closed:false,lines:[{item:"Highlighters",qty:6,received:2}]},
+      {id:"P-1003",user:"u7",school:"lincoln",date:ago(8),closed:false,lines:[{item:"Pens (pack)",qty:4,received:0}]}
+    ],
+    requests:[
+      {id:"R-2001",user:"u1",school:"lincoln",date:ago(30),lines:[line("Glue Sticks",2),line("Notebooks",1)]},
+      {id:"R-2002",user:"u2",school:"lincoln",date:ago(20),lines:[line("Glue Sticks",3)]},
+      {id:"R-2003",user:"u2",school:"lincoln",date:ago(5),lines:[line("Notebooks",2),line("Pencils (box)",1)]},
+      {id:"R-2004",user:"u3",school:"riverside",date:ago(10),lines:[line("Calculators",1)]}
+    ],
+    // Student IDs that weren't on the school's roster at sign-up, waiting for the school to confirm
+    joinRequests:[{id:"J-1",user:"u8",school:"lincoln",sid:"100150",date:ago(3)}],
+    seq:3000
+  };
+  d.baseline=copy(d.inventory); // the starting stock that "Reset demo data" returns to
+  return d;
+}
+function load(){let d=null;try{const s=localStorage.getItem(KEY);if(s)d=JSON.parse(s)}catch(e){}d=d||mem||seed();if(!d.baseline)d.baseline=copy(d.inventory);if(!d.joinRequests)d.joinRequests=[];return d}
+function save(){mem=db;try{localStorage.setItem(KEY,JSON.stringify(db))}catch(e){}}
+let db=load();
+let me=null; try{me=db.users.find(u=>u.id===sessionStorage.getItem("reschool-user"))||null}catch(e){}
+let tab="home", authScreen="login", donSchool=null, pickSchool=null, cart={mode:null,school:null}, claimWarn="";
+
+/* ---------- Helpers ---------- */
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const school=id=>db.schools.find(s=>s.id===id)||{name:"Unknown school",address:"",id};
+const fmtDate=s=>new Date(s).toLocaleDateString(undefined,{month:"short",day:"numeric"});
+const plural=(n,w)=>`${n} ${w}${n===1?"":"s"}`;
+const sum=(a,f)=>a.reduce((t,x)=>t+f(x),0);
+function toast(t){const el=$("#toast");el.textContent=t;el.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(()=>el.hidden=true,2800)}
+function fail(msg){throw new Error(msg)}
+const PILL={"Pledged":"p-wait","Pending":"p-wait","Waitlisted":"p-line","Partially Received":"p-part","Partially Approved":"p-part","Received":"p-done","Approved":"p-done","Closed":"p-bad","Denied":"p-bad"};
+const pill=s=>`<span class="pill ${PILL[s]||"p-wait"}">${s}</span>`;
+
+/* =========================================================
+   CORE RULES — everything the app enforces lives here
+   ========================================================= */
+function stock(s,i){return (db.inventory[s]||{})[i]||0}
+function setting(s,i){return (db.catalog[s]||{})[i]||{donate:false,request:false,dLimit:0,rLimit:0,star:false}}
+
+// Rosters: each school keeps its own list of student IDs, marked active or inactive.
+// A student claims an ID at one school (u.claim). If it isn't on that roster, the school confirms it first.
+function rosterEntry(s,sid){return (db.rosters[s]||[]).find(x=>x.sid===sid)||null}
+function accessRequest(u){return db.joinRequests.find(j=>j.user===u.id)||null}
+function studentState(u){ // none | active | inactive | pending | missing
+  if(!u||u.role!=="Student"||!u.sid||!u.claim) return "none";
+  const e=rosterEntry(u.claim,u.sid);
+  if(e) return e.active?"active":"inactive";
+  return accessRequest(u)?"pending":"missing";
+}
+function activeSchool(u){return studentState(u)==="active"?u.claim:null}
+function displayName(u){
+  if(!u) return "Removed user";
+  if(u.name) return u.name;
+  const e=u.claim&&rosterEntry(u.claim,u.sid);
+  return e&&(e.first||e.last)?`${e.first} ${e.last}`.trim():`Student ${u.sid}`;
+}
+const nameOf=id=>displayName(db.users.find(u=>u.id===id));
+
+// The line: open request lines for one item at one school, oldest first
+function queue(s,i){
+  return db.requests.filter(r=>r.school===s).flatMap(r=>r.lines.filter(l=>l.open&&l.item===i).map(l=>({r,l})))
+    .sort((a,b)=>a.r.date<b.r.date?-1:a.r.date>b.r.date?1:0);
+}
+function unitsWaiting(s,i){return sum(queue(s,i),x=>x.l.qty-x.l.approved)}
+function lineInfo(r,l){
+  const q=queue(r.school,l.item), pos=q.findIndex(x=>x.l===l);
+  const ahead=sum(q.slice(0,pos),x=>x.l.qty-x.l.approved);
+  return {pos:pos+1,len:q.length,avail:Math.max(0,stock(r.school,l.item)-ahead)};
+}
+function lineStatus(r,l){
+  if(!l.open) return l.approved===l.qty?"Approved":l.approved?"Partially Approved":"Denied";
+  if(l.approved) return "Partially Approved";
+  return lineInfo(r,l).avail>0?"Pending":"Waitlisted";
+}
+function reqStatus(r){
+  const open=r.lines.filter(l=>l.open), q=sum(r.lines,l=>l.qty), a=sum(r.lines,l=>l.approved);
+  if(!open.length) return a===q?"Approved":a?"Partially Approved":"Denied";
+  if(a) return "Partially Approved";
+  return open.some(l=>lineStatus(r,l)==="Pending")?"Pending":"Waitlisted";
+}
+function pledgeStatus(p){
+  const q=sum(p.lines,l=>l.qty), got=sum(p.lines,l=>l.received);
+  if(got===q) return "Received"; if(p.closed) return "Closed";
+  return got?"Partially Received":"Pledged";
+}
+const pledgeOpen=p=>/Pledged|Partially/.test(pledgeStatus(p));
+
+// High priority: items students are waiting on that the school has run out of. Priority: flagged by the school.
+function needs(s){
+  return db.items.filter(i=>setting(s,i).donate).map(i=>{
+    const q=queue(s,i), short=Math.max(0,unitsWaiting(s,i)-stock(s,i));
+    return {item:i,short,students:q.filter(x=>lineStatus(x.r,x.l)!=="Pending").length,star:setting(s,i).star};
+  }).filter(n=>n.short>0||n.star).sort((a,b)=>b.short-a.short||b.star-a.star);
+}
+
+// Rule 1: pledging and requesting never change inventory.
+// Rule 2: anyone can donate to any school, within that school's per-donation limits.
+function pledge(s,lines){
+  if(!lines.length) fail("Add at least one item.");
+  for(const {item,qty} of lines){
+    const c=setting(s,item);
+    if(!c.donate) fail(`${school(s).name} isn't accepting ${item}.`);
+    if(!(qty>=1&&qty<=c.dLimit)) fail(`${school(s).name} accepts up to ${c.dLimit} ${item} per donation.`);
+  }
+  const p={id:"P-"+(++db.seq),user:me.id,school:s,date:new Date().toISOString(),closed:false,lines:lines.map(x=>({item:x.item,qty:x.qty,received:0}))};
+  db.pledges.unshift(p); save(); return p;
+}
+// Rule 3: students request only from the school where their student ID is active, within per-request limits.
+// Out-of-stock items are allowed: they wait in line.
+function request(lines){
+  const s=activeSchool(me);
+  if(!s) fail("You need an active student ID at a school to request supplies.");
+  if(!lines.length) fail("Add at least one item.");
+  for(const {item,qty} of lines){
+    const c=setting(s,item);
+    if(!c.request) fail(`${school(s).name} doesn't offer ${item}.`);
+    if(!(qty>=1&&qty<=c.rLimit)) fail(`${school(s).name} allows up to ${c.rLimit} ${item} per request.`);
+    if(queue(s,item).some(x=>x.r.user===me.id)) fail(`You already have an open request for ${item}.`);
+  }
+  const r={id:"R-"+(++db.seq),user:me.id,school:s,date:new Date().toISOString(),lines:lines.map(x=>({item:x.item,qty:x.qty,approved:0,open:true}))};
+  db.requests.push(r); save(); return r;
+}
+// Rule 4: receiving adds to inventory, one line at a time or all at once, and can be partial.
+function receive(p,l,n){
+  const left=l.qty-l.received;
+  if(!pledgeOpen(p)) fail("This pledge is closed.");
+  if(!(n>=1&&n<=left)) fail(`You can receive 1 to ${left}.`);
+  l.received+=n; db.inventory[p.school][l.item]+=n; save();
+}
+function receiveAll(p){
+  if(!pledgeOpen(p)) fail("This pledge is closed.");
+  p.lines.forEach(l=>{const n=l.qty-l.received;if(n>0){l.received+=n;db.inventory[p.school][l.item]+=n}}); save();
+}
+function closePledge(p){p.closed=true;save()}
+// Rule 5: approving takes from inventory, can be partial, and goes in order of who asked first.
+function approvable(r,l){return l.open&&lineInfo(r,l).pos===1?Math.min(l.qty-l.approved,stock(r.school,l.item)):0}
+function approve(r,l,n){
+  if(lineInfo(r,l).pos!==1) fail("Approve earlier requests in line first.");
+  const max=approvable(r,l);
+  if(!(n>=1&&n<=max)) fail(`You can approve 1 to ${max}.`);
+  l.approved+=n; db.inventory[r.school][l.item]-=n;
+  if(l.approved===l.qty) l.open=false;
+  save();
+}
+function deny(r,l){l.open=false;save()}
+// Rule 6: sign up with a name, or with a student ID at a school.
+// An ID on that school's roster matches right away. An ID that isn't still signs up,
+// and waits for the school admin to confirm it, which adds it to the roster.
+function validateClaim(u,s,sid){
+  if(!/^[A-Za-z0-9-]{3,12}$/.test(sid)) fail("Student ID must be 3 to 12 letters or numbers.");
+  if(!db.schools.some(x=>x.id===s)) fail("Choose your school.");
+  if(db.users.some(x=>x.sid===sid&&x.claim===s&&x.id!==u.id)) fail(`An account at ${school(s).name} already uses that student ID.`);
+}
+function claimSid(u,s,sid){ // returns "matched" or "pending"
+  validateClaim(u,s,sid);
+  db.joinRequests=db.joinRequests.filter(j=>j.user!==u.id);
+  u.sid=sid; u.claim=s;
+  if(rosterEntry(s,sid)) return "matched";
+  db.joinRequests.push({id:"J-"+(++db.seq),user:u.id,school:s,sid,date:new Date().toISOString()});
+  return "pending";
+}
+function signUp(first,last,sid,s){
+  first=first.trim(); last=last.trim(); sid=sid.trim();
+  if(!sid&&(!first||!last)) fail("Enter your first and last name, or your student ID.");
+  const u={id:"u"+(++db.seq),role:"Student",name:[first,last].filter(Boolean).join(" "),sid:"",claim:""};
+  const result=sid?claimSid(u,s,sid):"none";
+  db.users.push(u); save(); return {u,result};
+}
+function approveAccess(j){
+  const u=db.users.find(x=>x.id===j.user)||{name:""};
+  if(!rosterEntry(j.school,j.sid)){const [first="",...rest]=(u.name||"").split(" ");db.rosters[j.school].push({sid:j.sid,first,last:rest.join(" "),active:true})}
+  db.joinRequests=db.joinRequests.filter(x=>x!==j); save();
+}
+function denyAccess(j){db.joinRequests=db.joinRequests.filter(x=>x!==j);save()}
+
+/* ---------- Shell ---------- */
+const ROLE_LABEL={"Student":"Student","School Admin":"School admin","District Admin":"District admin"};
+function render(){
+  if(me) me=db.users.find(u=>u.id===me.id)||null;
+  $("#who").innerHTML=me?`<span>${esc(displayName(me))} · <b>${ROLE_LABEL[me.role]}</b>${me.role==="School Admin"?", "+esc(school(me.school).name):me.role==="Student"&&activeSchool(me)?", "+esc(school(activeSchool(me)).name):""}</span><button class="small" onclick="logout()">Sign out</button>`:"";
+  if(!me) return authScreen==="signup"?renderSignup():renderLogin();
+  const T={
+    "Student":[["home","Home",sHome],["donate","Donate",sDonate],["request","Request",sRequest],["activity","My activity",sActivity]],
+    "School Admin":[["home","Dashboard",aHome],["pledges","Donations",aPledges],["requests","Requests",aRequests],["supplies","Supplies",aSupplies],["roster","Students",aRoster]],
+    "District Admin":[["home","Overview",dHome],["schools","Schools",dSchools],["supplies","Supplies",aSupplies],["roster","Rosters",aRoster],["users","Users",dUsers]]
+  }[me.role];
+  if(!T.some(t=>t[0]===tab)) tab="home";
+  $("#app").innerHTML=`<nav class="tabs">${T.map(([k,l])=>`<button aria-current="${tab===k}" onclick="go('${k}')">${l}</button>`).join("")}</nav>`+T.find(t=>t[0]===tab)[2]()+foot();
+  if(cart.mode) updateCart();
+}
+function foot(){
+  const tools=me&&me.role==="District Admin"?`<div class="actions">
+    <button class="small" onclick="resetDemo()" title="Clears all requests and donations and puts stock back to starting counts">Reset demo data</button>
+    <button class="small ghost danger" onclick="armRestore(this)">Restore original setup</button></div>`:"";
+  return `<div class="foot"><span>Demo data is saved in this browser only.</span>${tools}</div>`;
+}
+function studentWhere(u){
+  const st=studentState(u), n=u.claim?esc(school(u.claim).name):"";
+  return {active:n,inactive:n+" (inactive)",pending:n+" (ID waiting for approval)",missing:n+" (ID not confirmed)",none:"No school linked · can donate"}[st];
+}
+function renderLogin(){
+  const where=u=>u.role==="Student"?studentWhere(u):u.role==="School Admin"?esc(school(u.school).name):"All schools";
+  const card=u=>`<button class="user" onclick="login('${u.id}')"><span class="role ${u.role==="School Admin"?"admin":u.role==="District Admin"?"district":""}">${ROLE_LABEL[u.role]}</span><b>${esc(displayName(u))}</b><span class="meta">${where(u)}</span></button>`;
+  const group=(r,t)=>{const us=db.users.filter(u=>u.role===r);return us.length?`<h2>${t}</h2><div class="users">${us.map(card).join("")}</div>`:""};
+  $("#app").innerHTML=`<h1>Give what you have. Get what you need.</h1>
+  <p class="sub">ReSchool moves donated school supplies to the students who need them. Sign up as a new student, or pick a demo account.</p>
+  <div class="actions"><button class="primary" onclick="authScreen='signup';render()">Student sign up</button></div>
+  ${group("Student","Students")}${group("School Admin","School admins")}${group("District Admin","District admin")}
+  <h2>How it works</h2>
+  <div class="note">Anyone can <b>donate</b> to any school. Students <b>request</b> supplies from the school where their student ID is active. Stock only changes when a school admin <b>receives</b> a donation or <b>approves</b> a request. If something is out of stock, students wait in line and the item shows as <b>High priority</b> to donors.</div>`+foot();
+}
+function renderSignup(){
+  $("#app").innerHTML=`<h1>Student sign up</h1>
+  <p class="sub">Enter your student ID and school to be matched to your school's roster. No ID? Sign up with your name. You can still donate, and add your ID later to request supplies.</p>
+  <form class="card" onsubmit="doSignUp(event)">
+    <div class="two">
+      <label for="su-sid">Student ID<input id="su-sid" type="text" inputmode="numeric" autocomplete="off" maxlength="12" placeholder="e.g. 100103" oninput="claimWarn='';resetWarn('su')"></label>
+      <label for="su-school">School<select id="su-school" onchange="claimWarn='';resetWarn('su')">${db.schools.map(s=>`<option value="${s.id}">${esc(s.name)}</option>`).join("")}</select></label>
+    </div>
+    <div class="callout line" id="su-warn" hidden></div>
+    <div class="or">or</div>
+    <div class="two">
+      <label for="su-first">First name<input id="su-first" type="text" maxlength="30" autocomplete="given-name"></label>
+      <label for="su-last">Last name<input id="su-last" type="text" maxlength="30" autocomplete="family-name"></label>
+    </div>
+    <span class="hint">If you enter a student ID, your name is optional, but it helps your school confirm you.</span>
+    <div class="callout err" id="su-err" hidden></div>
+    <div class="actions"><button class="primary" type="submit" id="su-go">Create account</button><button type="button" class="ghost" onclick="authScreen='login';render()">Back</button></div>
+  </form>
+  <p class="hint" style="margin-top:14px">Demo: 100103 at Lincoln and 200202 at Riverside are on the roster. 100104 at Lincoln is inactive. Any other number shows the approval flow.</p>`;
+}
+// Warn before signing up with an ID the school doesn't have yet; a second tap confirms.
+function needsWarn(prefix,s,sid){
+  const key=s+"|"+sid;
+  if(!sid||rosterEntry(s,sid)||claimWarn===key) return false;
+  claimWarn=key;
+  const w=$(`#${prefix}-warn`);
+  w.textContent=`Student ID ${sid} wasn't found on ${school(s).name}'s roster. You can still continue. The school office will be asked to confirm it, and you can request supplies once they approve.`;
+  w.hidden=false; $(`#${prefix}-go`).textContent=prefix==="su"?"Sign up anyway":"Send for approval";
+  return true;
+}
+function resetWarn(prefix){const w=$(`#${prefix}-warn`);if(w)w.hidden=true;const b=$(`#${prefix}-go`);if(b)b.textContent=prefix==="su"?"Create account":"Link ID"}
+
+/* ---------- Item picker (donations and requests) ---------- */
+function cartForm(mode,s,submitLabel){
+  cart={mode,school:s};
+  const n=needs(s), hi=new Map(n.filter(x=>x.short).map(x=>[x.item,x])), pr=new Set(n.filter(x=>!x.short).map(x=>x.item));
+  let list=db.items.map((i,k)=>({i,k,c:setting(s,i)})).filter(x=>mode==="donate"?x.c.donate:x.c.request);
+  if(mode==="donate") list.sort((a,b)=>(hi.has(b.i)-hi.has(a.i))||(pr.has(b.i)-pr.has(a.i)));
+  if(!list.length) return `<div class="empty">${esc(school(s).name)} isn't ${mode==="donate"?"accepting donations":"offering any items"} right now.</div>`;
+  const rows=list.map(({i,k,c})=>{
+    const max=mode==="donate"?c.dLimit:c.rLimit;
+    let badge="",note,dis=false;
+    if(mode==="donate"){
+      if(hi.has(i)){badge='<span class="tag hot">High priority</span>';note=`${hi.get(i).short} short, students waiting · up to ${max}`}
+      else{if(pr.has(i))badge='<span class="tag">Priority</span>';note=`Up to ${max} per donation`}
+    }else{
+      const avail=Math.max(0,stock(s,i)-unitsWaiting(s,i));
+      dis=queue(s,i).some(x=>x.r.user===me.id);
+      if(dis) note="You already have an open request for this";
+      else if(avail){note=`${avail} available · up to ${max}`}
+      else{badge='<span class="tag hot">Out of stock</span>';note=`You'll join the waitlist · up to ${max}`}
+    }
+    return `<div class="cartrow" id="cr-${k}"><div class="what"><div><b>${esc(i)}</b> ${badge}</div><div class="meta">${note}</div></div>
+    <div class="mini"><button type="button" onclick="bump(${k},-1)" ${dis?"disabled":""} aria-label="Fewer ${esc(i)}">−</button><input id="q-${k}" type="number" min="0" max="${max}" value="0" ${dis?"disabled":""} oninput="clampQ(${k})" aria-label="${esc(i)} quantity"><button type="button" onclick="bump(${k},1)" ${dis?"disabled":""} aria-label="More ${esc(i)}">+</button></div></div>`;
+  }).join("");
+  return `<form class="card" onsubmit="submitCart(event)"><div class="cart">${rows}</div>
+  <div class="callout line" id="cart-wait" hidden></div>
+  <div class="sumbar"><span class="meta" id="cart-sum">Nothing added yet</span><button class="primary" type="submit" id="cart-go" disabled>${submitLabel}</button></div></form>`;
+}
+function bump(k,d){const q=$("#q-"+k);q.value=Math.max(0,Math.min(+q.max,(+q.value||0)+d));updateCart()}
+function clampQ(k){const q=$("#q-"+k);q.value=Math.max(0,Math.min(+q.max,Math.floor(+q.value||0)));updateCart()}
+function cartLines(){return [...document.querySelectorAll('input[id^="q-"]')].filter(q=>!q.disabled&&+q.value>0).map(q=>({k:+q.id.slice(2),item:db.items[+q.id.slice(2)],qty:+q.value}))}
+function updateCart(){
+  const go=$("#cart-go"); if(!go) return;
+  const ls=cartLines();
+  document.querySelectorAll(".cartrow").forEach(r=>r.classList.toggle("picked",ls.some(l=>"cr-"+l.k===r.id)));
+  go.disabled=!ls.length;
+  $("#cart-sum").textContent=ls.length?`${plural(ls.length,"item")}, ${plural(sum(ls,l=>l.qty),"unit")}`:"Nothing added yet";
+  const w=$("#cart-wait");
+  if(cart.mode==="request"){
+    const s=cart.school, full=[], part=[];
+    ls.forEach(l=>{const a=Math.max(0,stock(s,l.item)-unitsWaiting(s,l.item));if(a===0)full.push(l.item);else if(l.qty>a)part.push(l.item)});
+    const msg=[];
+    if(full.length) msg.push(`Out of stock: ${full.join(", ")}. You'll be placed in line and get ${full.length===1?"it":"them"} when donated.`);
+    if(part.length) msg.push(`Not enough on hand: ${part.join(", ")}. You may get part now and wait for the rest.`);
+    w.textContent=msg.join(" "); w.hidden=!msg.length;
+  }else w.hidden=true;
+}
+function submitCart(e){
+  e.preventDefault();
+  const ls=cartLines().map(({item,qty})=>({item,qty}));
+  try{
+    if(cart.mode==="donate"){pledge(cart.school,ls);toast("Donation pledged. Drop it off at the school office.")}
+    else{const r=request(ls);const w=r.lines.filter(l=>lineStatus(r,l)==="Waitlisted").length;toast(w?`Request sent. ${plural(w,"item")} on the waitlist.`:"Request sent")}
+    go("activity");
+  }catch(err){toast(err.message)}
+}
+
+/* ---------- Student ---------- */
+function sHome(){
+  const mine=db.requests.filter(r=>r.user===me.id), s=activeSchool(me);
+  const openLines=mine.flatMap(r=>r.lines.filter(l=>l.open).map(l=>({r,l})));
+  return `<h1>Hi, ${esc(displayName(me).split(" ")[0])}</h1>
+  <p class="sub">${s?esc(school(s).name):{inactive:"Your student ID is inactive. You can still donate.",pending:`Waiting for ${esc(school(me.claim).name)} to confirm your student ID. You can donate in the meantime.`,missing:"Your student ID wasn't confirmed. You can still donate.",none:"No school linked yet. You can donate to any school, and add your student ID to request supplies."}[studentState(me)]}</p>
+  <div class="stats"><div class="stat"><div class="eyebrow">Items requested</div><div class="n">${openLines.length}</div></div>
+  <div class="stat"><div class="eyebrow">Waitlisted</div><div class="n">${openLines.filter(x=>lineStatus(x.r,x.l)==="Waitlisted").length}</div></div>
+  <div class="stat"><div class="eyebrow">Donations</div><div class="n">${db.pledges.filter(p=>p.user===me.id).length}</div></div></div>
+  <h2>What would you like to do?</h2>
+  <div class="actions"><button class="primary" onclick="go('donate')">Donate supplies</button><button onclick="go('request')">Request supplies</button></div>
+  ${s?`<h2>Most needed at ${esc(school(s).name)}</h2>${needsList(s)}`:""}`;
+}
+function needsList(s){
+  const n=needs(s);
+  if(!n.length) return `<div class="empty">Nothing urgent right now.</div>`;
+  return `<div class="needs">${n.map(x=>`<div class="need"><div><b>${esc(x.item)}</b><div class="meta">${x.short?`${x.short} short · ${plural(x.students,"student")} waiting`:"Flagged by the school"}</div></div>${x.short?'<span class="tag hot">High priority</span>':'<span class="tag">Priority</span>'}</div>`).join("")}</div>`;
+}
+function sDonate(){
+  donSchool=db.schools.some(s=>s.id===donSchool)?donSchool:(activeSchool(me)||db.schools[0].id);
+  return `<h1>Donate supplies</h1><p class="sub">Anyone can donate to any school. Pick what you're bringing; it counts toward the school's stock once their office receives it.</p>
+  <label for="d-school" style="margin-bottom:14px">School<select id="d-school" onchange="donSchool=this.value;render()">${db.schools.map(s=>`<option value="${s.id}" ${s.id===donSchool?"selected":""}>${esc(s.name)}</option>`).join("")}</select></label>
+  ${cartForm("donate",donSchool,"Pledge donation")}`;
+}
+function sRequest(){
+  cart={mode:null};
+  const st=studentState(me);
+  const link=`<form class="card" onsubmit="doLink(event)"><div class="two">
+    <label for="l-sid">Student ID<input id="l-sid" type="text" inputmode="numeric" autocomplete="off" maxlength="12" required oninput="claimWarn='';resetWarn('l')"></label>
+    <label for="l-school">School<select id="l-school" onchange="claimWarn='';resetWarn('l')">${db.schools.map(s=>`<option value="${s.id}" ${s.id===me.claim?"selected":""}>${esc(s.name)}</option>`).join("")}</select></label></div>
+    <div class="callout line" id="l-warn" hidden></div>
+    <div class="actions"><button class="primary" type="submit" id="l-go">Link ID</button></div></form>`;
+  const sc=me.claim?esc(school(me.claim).name):"";
+  if(st==="none") return `<h1>Request supplies</h1><p class="sub">To request supplies, add the student ID your school gave you.</p>${link}`;
+  if(st==="pending") return `<h1>Request supplies</h1><div class="callout line">Your student ID ${esc(me.sid)} is waiting for ${sc} to confirm it. Once the school office approves it, you can request supplies here. You can still donate.</div>`;
+  if(st==="missing") return `<h1>Request supplies</h1><div class="callout err">${sc} didn't confirm student ID ${esc(me.sid)}. Check the number with your school office and try again.</div><h2>Enter your ID again</h2>${link}`;
+  if(st==="inactive") return `<h1>Request supplies</h1><div class="callout err">Your student ID is marked inactive at ${sc}. Ask the school office to reactivate it. You can still donate.</div>`;
+  const s=activeSchool(me);
+  return `<h1>Request supplies</h1><p class="sub">From ${esc(school(s).name)}. Out-of-stock items can still be requested. You'll be placed in line and get them when they're donated.</p>
+  ${cartForm("request",s,"Send request")}`;
+}
+function sActivity(){
+  cart={mode:null};
+  const rs=db.requests.filter(r=>r.user===me.id).sort((a,b)=>a.date<b.date?1:-1), ps=db.pledges.filter(p=>p.user===me.id);
+  return `<h1>My activity</h1>
+  <h2>Requests</h2>${rs.length?`<div class="list">${rs.map(r=>reqCard(r,false)).join("")}</div>`:`<div class="empty">No requests yet.</div>`}
+  <h2>Donations</h2>${ps.length?`<div class="list">${ps.map(p=>pledgeCard(p,false)).join("")}</div>`:`<div class="empty">No donations yet.</div>`}`;
+}
+
+/* ---------- School admin ---------- */
+function aHome(){
+  cart={mode:null};
+  const s=me.school, sc=school(s);
+  const op=db.pledges.filter(p=>p.school===s&&pledgeOpen(p)).length;
+  const lines=db.requests.filter(r=>r.school===s).flatMap(r=>r.lines.filter(l=>l.open).map(l=>({r,l})));
+  const pend=db.joinRequests.filter(j=>j.school===s).length;
+  return `<h1>${esc(sc.name)}</h1><p class="sub">You only see this school's donations, requests and students.</p>
+  ${pend?`<div class="callout line info" style="margin-bottom:14px"><span>${plural(pend,"student ID")} waiting for your approval.</span><button class="small" onclick="go('roster')">Review</button></div>`:""}
+  <div class="card"><div class="info"><div><div class="eyebrow">School info</div><b>${esc(sc.name)}</b><div class="meta">${esc(sc.address)||"No address yet"}</div></div><button class="small" onclick="openSchool('${s}')">Edit</button></div></div>
+  <h2>Today</h2>
+  <div class="stats"><div class="stat"><div class="eyebrow">Open donations</div><div class="n">${op}</div></div>
+  <div class="stat"><div class="eyebrow">Ready to approve</div><div class="n">${lines.filter(x=>approvable(x.r,x.l)>0).length}</div></div>
+  <div class="stat"><div class="eyebrow">Waitlisted</div><div class="n">${lines.filter(x=>lineStatus(x.r,x.l)==="Waitlisted").length}</div></div></div>
+  <h2>Most needed</h2>${needsList(s)}
+  <div class="actions" style="margin-top:16px"><button class="primary" onclick="go('pledges')">Receive donations</button><button onclick="go('requests')">Review requests</button></div>`;
+}
+function aPledges(){
+  cart={mode:null};
+  const ps=db.pledges.filter(p=>p.school===me.school).sort((a,b)=>(pledgeOpen(b)-pledgeOpen(a))||(a.date<b.date?1:-1));
+  return `<h1>Donations</h1><p class="sub">Receive items as they arrive. Partial drop-offs are fine.</p>
+  ${ps.length?`<div class="list">${ps.map(p=>pledgeCard(p,true)).join("")}</div>`:`<div class="empty">No donations for this school yet.</div>`}`;
+}
+function aRequests(){
+  cart={mode:null};
+  const rs=db.requests.filter(r=>r.school===me.school).sort((a,b)=>(b.lines.some(l=>l.open)-a.lines.some(l=>l.open))||(a.date<b.date?-1:1));
+  return `<h1>Requests</h1><p class="sub">Each item is served in the order students asked. Approve all or part, up to what's on hand.</p>
+  ${rs.length?`<div class="list">${rs.map(r=>reqCard(r,true)).join("")}</div>`:`<div class="empty">No requests for this school yet.</div>`}`;
+}
+function schoolPicker(label){
+  if(me.role!=="District Admin"){pickSchool=me.school;return ""}
+  pickSchool=db.schools.some(s=>s.id===pickSchool)?pickSchool:db.schools[0].id;
+  return `<label for="pick-school" style="margin-bottom:14px">${label}<select id="pick-school" onchange="pickSchool=this.value;render()">${db.schools.map(x=>`<option value="${x.id}" ${x.id===pickSchool?"selected":""}>${esc(x.name)}</option>`).join("")}</select></label>`;
+}
+function aSupplies(){
+  cart={mode:null};
+  const picker=schoolPicker("School"), s=pickSchool, lim=(on,n)=>on?n:"Off";
+  return `<h1>Supplies</h1><p class="sub">Choose what can be donated and requested, the most allowed per donation or request, and which items to flag as a priority.</p>
+  ${picker}${me.role==="District Admin"?`<div class="actions" style="margin-bottom:14px"><button onclick="openNewItem()">Add supply item</button></div>`:""}
+  <div class="tablebox"><table><thead><tr><th>Item</th><th class="num">On hand</th><th class="num">Waiting</th><th class="num">Donate max</th><th class="num">Request max</th><th></th></tr></thead><tbody>
+  ${db.items.map((i,k)=>{const c=setting(s,i),q=stock(s,i),w=unitsWaiting(s,i);
+    return `<tr><td><b>${esc(i)}</b> ${c.star?'<span class="tag">Priority</span>':""}</td>
+    <td class="num ${q?"":"zero"}">${q}</td><td class="num ${w>q?"short":w?"":"zero"}">${w}</td>
+    <td class="num ${c.donate?"":"zero"}">${lim(c.donate,c.dLimit)}</td><td class="num ${c.request?"":"zero"}">${lim(c.request,c.rLimit)}</td>
+    <td><button class="small" onclick="openItem(${k})">Edit</button></td></tr>`}).join("")}
+  </tbody></table></div>
+  <p class="hint">Waiting is units students asked for that aren't approved yet. Orange means more is wanted than is on hand.</p>`;
+}
+function aRoster(){
+  cart={mode:null};
+  const picker=schoolPicker("School"), s=pickSchool, list=db.rosters[s]||[];
+  const pend=db.joinRequests.filter(j=>j.school===s);
+  return `<h1>${me.role==="District Admin"?"Rosters":"Students"}</h1><p class="sub">Students sign up with these IDs and are matched to this school. Only active students can request supplies.</p>
+  ${picker}
+  ${pend.length?`<h2>Waiting for approval</h2><p class="sub">These students signed up with an ID that isn't on the roster. Approving adds the ID to the roster as active.</p>
+  <div class="list" style="margin-bottom:8px">${pend.map(j=>{const u=db.users.find(x=>x.id===j.user);return `<div class="row"><div class="info"><div>
+    <div class="title"><span class="qty">${esc(j.sid)}</span> · ${u&&u.name?esc(u.name):'<span class="meta">No name given</span>'}</div><div class="meta">Signed up ${fmtDate(j.date)}</div></div>
+    <div class="actions"><button class="primary small" onclick="doAccess('${j.id}',true)">Approve</button><button class="small ghost danger" onclick="doAccess('${j.id}',false)">Deny</button></div></div></div>`}).join("")}</div>
+  <h2>Roster</h2>`:""}
+  <div class="actions" style="margin-bottom:14px"><button class="primary" onclick="openRoster('${s}')">Add student ID</button></div>
+  ${list.length?`<div class="tablebox"><table><thead><tr><th>Student ID</th><th>Name</th><th>Account</th><th>Status</th><th></th></tr></thead><tbody>
+  ${list.map((e,k)=>`<tr><td class="mono">${esc(e.sid)}</td><td>${esc(`${e.first} ${e.last}`.trim())||'<span class="meta">No name</span>'}</td>
+    <td class="meta">${db.users.some(u=>u.sid===e.sid&&u.claim===s)?"Signed up":"Not yet"}</td>
+    <td><button class="pill ${e.active?"p-done":"p-off"}" onclick="toggleActive('${s}',${k})" aria-label="${e.active?"Mark inactive":"Mark active"}">${e.active?"Active":"Inactive"}</button></td>
+    <td><button class="small" onclick="openRoster('${s}',${k})">Edit</button></td></tr>`).join("")}
+  </tbody></table></div><p class="hint">Tap a status to switch it between active and inactive.</p>`:`<div class="empty">No student IDs yet. Add one to let a student sign up.</div>`}`;
+}
+
+/* ---------- District admin ---------- */
+function dHome(){
+  cart={mode:null};
+  return `<h1>District overview</h1><p class="sub">Every school at a glance.</p>
+  <div class="list">${db.schools.map(s=>{
+    const op=db.pledges.filter(p=>p.school===s.id&&pledgeOpen(p)).length;
+    const ol=sum(db.requests.filter(r=>r.school===s.id),r=>r.lines.filter(l=>l.open).length);
+    const short=needs(s.id).filter(x=>x.short).length;
+    const act=(db.rosters[s.id]||[]).filter(e=>e.active).length, ids=db.joinRequests.filter(j=>j.school===s.id).length;
+    const admins=db.users.filter(u=>u.role==="School Admin"&&u.school===s.id).map(u=>esc(u.name)).join(", ")||"No admin assigned";
+    return `<div class="row"><div class="top"><div><div class="title">${esc(s.name)}</div><div class="meta">${esc(s.address)} · Admin: ${admins}</div></div>${short?`<span class="tag hot">${short} high priority</span>`:""}</div>
+    <div class="meta"><span class="qty">${op}</span> open donations · <span class="qty">${ol}</span> items requested · <span class="qty">${act}</span> active students${ids?` · <span class="qty">${ids}</span> IDs to approve`:""}</div>
+    <div class="actions"><button class="small" onclick="pickSchool='${s.id}';go('supplies')">Supplies</button><button class="small" onclick="pickSchool='${s.id}';go('roster')">Roster</button><button class="small ghost" onclick="openSchool('${s.id}')">Edit school</button></div></div>`}).join("")}</div>`;
+}
+function dSchools(){
+  cart={mode:null};
+  return `<h1>Schools</h1><p class="sub">Add schools and keep their details current. School admins can also edit their own school's info.</p>
+  <div class="actions" style="margin-bottom:14px"><button class="primary" onclick="openSchool()">Add school</button></div>
+  <div class="list">${db.schools.map(s=>`<div class="row"><div class="info"><div><div class="title">${esc(s.name)}</div><div class="meta">${esc(s.address)||"No address yet"}</div></div><button class="small" onclick="openSchool('${s.id}')">Edit</button></div></div>`).join("")}</div>`;
+}
+function dUsers(){
+  cart={mode:null};
+  const where=u=>u.role==="School Admin"?esc(school(u.school).name):u.role==="District Admin"?"All schools":studentWhere(u);
+  return `<h1>Users</h1><p class="sub">Demo accounts. Students can also sign up themselves.</p>
+  <div class="actions" style="margin-bottom:14px"><button class="primary" onclick="openUser()">Add user</button></div>
+  <div class="tablebox"><table><thead><tr><th>Name</th><th>Role</th><th>School</th><th></th></tr></thead><tbody>
+  ${db.users.map(u=>`<tr><td><b>${esc(displayName(u))}</b>${u.sid?`<div class="meta mono">ID ${esc(u.sid)}</div>`:""}</td><td>${ROLE_LABEL[u.role]}</td><td>${where(u)}</td><td><button class="small" onclick="openUser('${u.id}')">Edit</button></td></tr>`).join("")}
+  </tbody></table></div>`;
+}
+
+/* ---------- Cards ---------- */
+function pledgeCard(p,admin){
+  const open=pledgeOpen(p);
+  const lines=p.lines.map((l,k)=>{
+    const w=unitsWaiting(p.school,l.item), left=l.qty-l.received;
+    return `<div class="ln"><div class="what"><b>${esc(l.item)}</b><div class="meta"><span class="qty">${l.received} / ${l.qty}</span> received${admin&&open&&w?` · ${w} wanted by students in line`:""}</div></div>
+    ${admin&&open&&left>0?`<button class="small" onclick="openReceive('${p.id}',${k})">Receive</button>`:""}</div>`;
+  }).join("");
+  return `<div class="row"><div class="top"><div><div class="title">${admin?"From "+esc(nameOf(p.user)):"To "+esc(school(p.school).name)}</div>
+  <div class="meta">${p.id} · ${fmtDate(p.date)} · ${plural(p.lines.length,"item")}</div></div>${pill(pledgeStatus(p))}</div>${lines}
+  ${admin&&open?`<div class="actions" style="padding-top:4px"><button class="primary small" onclick="doReceiveAll('${p.id}')">Receive everything</button><button class="small ghost danger" onclick="doClose('${p.id}')">Close donation</button></div>`:""}</div>`;
+}
+function reqCard(r,admin){
+  const lines=r.lines.map((l,k)=>{
+    const st=lineStatus(r,l), info=l.open?lineInfo(r,l):null, max=approvable(r,l);
+    let extra=l.open?` · #${info.pos} in line${info.len>1?` of ${info.len}`:""}`:(l.approved&&l.approved<l.qty?" · rest declined":"");
+    if(admin&&l.open) extra+=` · ${stock(r.school,l.item)} on hand`;
+    let btns="";
+    if(admin&&l.open) btns=`<div class="actions"><button class="small ${max?"primary":""}" ${max?"":"disabled"} onclick="openApprove('${r.id}',${k})">${max?"Approve":info.pos>1?"Waiting on #1":"Out of stock"}</button><button class="small ghost danger" onclick="doDeny('${r.id}',${k})">${l.approved?"Decline rest":"Deny"}</button></div>`;
+    return `<div class="ln"><div class="what"><b>${esc(l.item)}</b> ${pill(st)}<div class="meta"><span class="qty">${l.approved} / ${l.qty}</span> approved${extra}</div></div>${btns}</div>`;
+  }).join("");
+  return `<div class="row"><div class="top"><div><div class="title">${admin?esc(nameOf(r.user)):esc(school(r.school).name)}</div>
+  <div class="meta">${r.id} · ${fmtDate(r.date)} · ${plural(r.lines.length,"item")}</div></div>${pill(reqStatus(r))}</div>${lines}</div>`;
+}
+
+/* ---------- Actions ---------- */
+function login(id){me=db.users.find(u=>u.id===id);tab="home";try{sessionStorage.setItem("reschool-user",id)}catch(e){}render();window.scrollTo(0,0)}
+function logout(){me=null;authScreen="login";cart={mode:null};try{sessionStorage.removeItem("reschool-user")}catch(e){}render()}
+function go(t){tab=t;render();window.scrollTo(0,0)}
+function claimToast(u){
+  const st=studentState(u), n=u.claim?school(u.claim).name:"";
+  return {active:`Welcome! You're matched to ${n}.`,inactive:`Your ID is inactive at ${n}. You can donate, but ask the office before requesting.`,pending:`Sent to ${n} for approval. You can donate in the meantime.`,none:"Account created. Add your student ID anytime to request supplies.",missing:""}[st];
+}
+function doSignUp(e){
+  e.preventDefault();
+  const err=$("#su-err"); err.hidden=true;
+  const sid=$("#su-sid").value.trim(), s=$("#su-school").value;
+  try{
+    if(sid){validateClaim({id:null},s,sid); if(needsWarn("su",s,sid)) return}
+    const {u}=signUp($("#su-first").value,$("#su-last").value,sid,s);
+    claimWarn=""; login(u.id); toast(claimToast(u));
+  }catch(x){err.textContent=x.message;err.hidden=false}
+}
+function doLink(e){
+  e.preventDefault();
+  const sid=$("#l-sid").value.trim(), s=$("#l-school").value;
+  try{validateClaim(me,s,sid); if(needsWarn("l",s,sid)) return; claimSid(me,s,sid); save(); claimWarn=""; toast(claimToast(me)); render()}
+  catch(x){toast(x.message)}
+}
+function doAccess(id,ok){const j=db.joinRequests.find(x=>x.id===id);if(!j)return;(ok?approveAccess:denyAccess)(j);toast(ok?`${j.sid} added to the roster`:`${j.sid} denied`);render()}
+function doReceiveAll(id){try{const p=db.pledges.find(x=>x.id===id);receiveAll(p);toast("Everything received. Inventory updated.");render()}catch(err){toast(err.message)}}
+function doClose(id){closePledge(db.pledges.find(p=>p.id===id));toast("Donation closed");render()}
+function doDeny(id,k){const r=db.requests.find(x=>x.id===id),l=r.lines[k];deny(r,l);toast(l.approved?"Remaining amount declined":`${l.item} denied`);render()}
+function toggleActive(s,k){const e=db.rosters[s][k];e.active=!e.active;save();toast(`${e.sid} marked ${e.active?"active":"inactive"}`);render()}
+function resetDemo(){db.pledges=[];db.requests=[];db.inventory=copy(db.baseline);save();toast("Requests and donations cleared. Stock is back to starting counts.");render()}
+function armRestore(btn){
+  if(!btn.classList.contains("armed")){btn.classList.add("armed");btn.textContent="Tap again to restore everything";setTimeout(()=>{if(btn.isConnected){btn.classList.remove("armed");btn.textContent="Restore original setup"}},4000);return}
+  db=seed();save();me=db.users.find(u=>u.id===(me&&me.id))||null;tab="home";toast("Original setup restored");render();
+}
+
+/* ---------- Pop-up forms ---------- */
+function openSheet(title,body,saveLabel,onSave,extra=""){
+  $("#modal").innerHTML=`<div class="scrim" onclick="if(event.target===this)closeSheet()"><form class="sheet" id="sheet-form" role="dialog" aria-label="${esc(title)}">
+  <h3>${esc(title)}</h3>${body}<div class="callout err" id="s-err" hidden></div>
+  <div class="actions"><button class="primary" type="submit">${saveLabel}</button><button type="button" class="ghost" onclick="closeSheet()">Cancel</button>${extra}</div></form></div>`;
+  $("#sheet-form").onsubmit=e=>{e.preventDefault();try{const msg=onSave();closeSheet();render();if(msg)toast(msg)}catch(err){const el=$("#s-err");el.textContent=err.message;el.hidden=false}};
+  const f=$("#sheet-form input:not([type=checkbox]),#sheet-form select"); if(f) f.focus();
+}
+function closeSheet(){$("#modal").innerHTML=""}
+const stepper=max=>`<div class="stepper"><button type="button" onclick="step(-1)" aria-label="Less">−</button><input id="s-qty" type="number" min="1" max="${max}" value="${max}" aria-label="Quantity"><button type="button" onclick="step(1)" aria-label="More">+</button></div>`;
+function step(d){const i=$("#s-qty");i.value=Math.max(1,Math.min(+i.max,(+i.value||0)+d))}
+function armRemove(btn,fn){if(!btn.classList.contains("armed")){btn.classList.add("armed");btn.textContent="Tap again to remove";return}fn();closeSheet();render()}
+
+function openReceive(id,k){
+  const p=db.pledges.find(x=>x.id===id), l=p.lines[k], left=l.qty-l.received;
+  openSheet(`Receive ${l.item}`,`<div class="meta">${left} still expected from ${esc(nameOf(p.user))}.</div>${stepper(left)}`,"Receive",()=>{
+    const n=+$("#s-qty").value; receive(p,l,n);
+    const w=queue(p.school,l.item).length;
+    return w?`Received ${n}. ${plural(w,"student")} in line for ${l.item}.`:`Received ${n}. Inventory updated.`;
+  });
+}
+function openApprove(id,k){
+  const r=db.requests.find(x=>x.id===id), l=r.lines[k], max=approvable(r,l);
+  openSheet(`Approve ${l.item}`,`<div class="meta">${esc(nameOf(r.user))} asked for ${l.qty-l.approved} more · ${stock(r.school,l.item)} on hand · you can approve up to ${max}.</div>${stepper(max)}`,"Approve",()=>{
+    const n=+$("#s-qty").value; approve(r,l,n); return `Approved ${n}. Inventory updated.`;
+  });
+}
+function openItem(k){
+  const s=pickSchool, i=db.items[k], c=setting(s,i);
+  openSheet(`${i} at ${school(s).name}`,`
+    <label class="check"><input type="checkbox" id="i-don" ${c.donate?"checked":""}> Accept donations</label>
+    <label class="check"><input type="checkbox" id="i-req" ${c.request?"checked":""}> Students can request</label>
+    <div class="two"><label for="i-dl">Max per donation<input id="i-dl" type="number" min="1" max="500" value="${c.dLimit||1}"></label>
+    <label for="i-rl">Max per request<input id="i-rl" type="number" min="1" max="50" value="${c.rLimit||1}"></label></div>
+    <label class="check"><input type="checkbox" id="i-star" ${c.star?"checked":""}> Flag as a priority for donors</label>
+    <label for="i-stock">On hand <span class="hint">(also the starting count after a reset)</span><input id="i-stock" type="number" min="0" max="9999" value="${stock(s,i)}"></label>`,
+  "Save",()=>{
+    const dl=+$("#i-dl").value, rl=+$("#i-rl").value, oh=+$("#i-stock").value;
+    if(!(Number.isInteger(dl)&&dl>=1&&dl<=500)) fail("Max per donation must be 1 to 500.");
+    if(!(Number.isInteger(rl)&&rl>=1&&rl<=50)) fail("Max per request must be 1 to 50.");
+    if(!(Number.isInteger(oh)&&oh>=0)) fail("On hand must be 0 or more.");
+    db.catalog[s][i]={donate:$("#i-don").checked,request:$("#i-req").checked,dLimit:dl,rLimit:rl,star:$("#i-star").checked};
+    db.inventory[s][i]=oh; db.baseline[s][i]=oh; save(); return `${i} updated`;
+  });
+}
+function openNewItem(){
+  openSheet("Add supply item",`<label for="n-name">Item name<input id="n-name" type="text" maxlength="40" placeholder="e.g. Rulers" required></label>
+    <span class="hint">Added to every school with 0 on hand, up to 20 per donation and 5 per request. Adjust each school in Supplies.</span>`,"Add item",()=>{
+    const n=$("#n-name").value.trim();
+    if(!n) fail("Enter a name.");
+    if(db.items.some(i=>i.toLowerCase()===n.toLowerCase())) fail("That item already exists.");
+    db.items.push(n);
+    db.schools.forEach(s=>{db.catalog[s.id][n]={donate:true,request:true,dLimit:20,rLimit:5,star:false};db.inventory[s.id][n]=0;db.baseline[s.id][n]=0});
+    save(); return n+" added";
+  });
+}
+function openSchool(id){
+  const s=id?school(id):{name:"",address:""};
+  openSheet(id?"Edit school info":"Add school",`
+    <label for="sc-name">School name<input id="sc-name" type="text" maxlength="60" value="${esc(s.name)}" required></label>
+    <label for="sc-addr">Address<input id="sc-addr" type="text" maxlength="80" value="${esc(s.address)}"></label>`,
+  id?"Save":"Add school",()=>{
+    const name=$("#sc-name").value.trim(), address=$("#sc-addr").value.trim();
+    if(!name) fail("Enter a school name.");
+    if(db.schools.some(x=>x.name.toLowerCase()===name.toLowerCase()&&x.id!==id)) fail("Another school already has that name.");
+    if(id){Object.assign(s,{name,address});save();return "School info saved"}
+    const nid="s"+(++db.seq);
+    db.schools.push({id:nid,name,address}); db.rosters[nid]=[]; db.catalog[nid]={}; db.inventory[nid]={}; db.baseline[nid]={};
+    db.items.forEach(i=>{db.catalog[nid][i]={donate:true,request:true,dLimit:20,rLimit:5,star:false};db.inventory[nid][i]=0;db.baseline[nid][i]=0});
+    save(); return name+" added";
+  });
+}
+function openRoster(s,k){
+  const e=k!=null?db.rosters[s][k]:{sid:"",first:"",last:"",active:true};
+  openSheet(k!=null?"Edit student ID":"Add student ID",`
+    <label for="ro-sid">Student ID<input id="ro-sid" type="text" maxlength="12" value="${esc(e.sid)}" autocomplete="off" required></label>
+    <div class="two"><label for="ro-first">First name <span class="hint">(optional)</span><input id="ro-first" type="text" maxlength="30" value="${esc(e.first)}"></label>
+    <label for="ro-last">Last name <span class="hint">(optional)</span><input id="ro-last" type="text" maxlength="30" value="${esc(e.last)}"></label></div>
+    <label class="check"><input type="checkbox" id="ro-active" ${e.active?"checked":""}> Active (can request supplies)</label>`,
+  k!=null?"Save":"Add",()=>{
+    const sid=$("#ro-sid").value.trim();
+    if(!/^[A-Za-z0-9-]{3,12}$/.test(sid)) fail("Student ID must be 3 to 12 letters or numbers.");
+    const dupe=rosterEntry(s,sid); if(dupe&&dupe!==e) fail(`ID ${sid} is already on this roster.`);
+    const next={sid,first:$("#ro-first").value.trim(),last:$("#ro-last").value.trim(),active:$("#ro-active").checked};
+    if(k!=null){if(e.sid!==sid)db.users.forEach(u=>{if(u.sid===e.sid&&u.claim===s)u.sid=sid});Object.assign(e,next)}else db.rosters[s].push(next);
+    db.joinRequests=db.joinRequests.filter(j=>!(j.school===s&&j.sid===sid)); // adding the ID by hand settles any waiting approval
+    save(); return k!=null?"Student updated":`${sid} added`;
+  }, k!=null?`<button type="button" class="ghost danger" style="margin-left:auto" onclick="armRemove(this,()=>{db.rosters['${s}'].splice(${k},1);save();toast('Student ID removed')})">Remove</button>`:"");
+}
+function openUser(id){
+  const u=id?db.users.find(x=>x.id===id):{name:"",role:"Student",sid:"",claim:db.schools[0].id,school:db.schools[0].id};
+  const sel=u.role==="Student"?(u.claim||db.schools[0].id):u.school;
+  const self=id&&id===me.id;
+  openSheet(id?"Edit user":"Add user",`
+    <label for="us-name">Name <span class="hint" id="us-name-hint"></span><input id="us-name" type="text" maxlength="40" value="${esc(u.name)}"></label>
+    <label for="us-role">Role<select id="us-role" onchange="roleFields()" ${self?"disabled":""}>${["Student","School Admin","District Admin"].map(r=>`<option value="${r}" ${u.role===r?"selected":""}>${ROLE_LABEL[r]}</option>`).join("")}</select></label>
+    <label for="us-school" id="us-school-wrap"><span id="us-school-label">School</span><select id="us-school">${db.schools.map(s=>`<option value="${s.id}" ${sel===s.id?"selected":""}>${esc(s.name)}</option>`).join("")}</select></label>
+    <label for="us-sid" id="us-sid-wrap">Student ID <span class="hint">(optional; if it isn't on the roster it goes to the school for approval)</span><input id="us-sid" type="text" maxlength="12" value="${esc(u.sid||"")}" autocomplete="off"></label>`,
+  id?"Save":"Add user",()=>{
+    const role=self?u.role:$("#us-role").value, name=$("#us-name").value.trim(), s=$("#us-school").value;
+    const target=id?u:{id:"u"+(db.seq+1),role};
+    if(role==="Student"){
+      const sid=$("#us-sid").value.trim();
+      if(!name&&!sid) fail("Enter a name or a student ID.");
+      if(sid) validateClaim(target,s,sid);
+      if(!id){db.seq++;db.users.push(target)}
+      Object.assign(target,{name,role}); delete target.school;
+      if(!sid){target.sid="";target.claim="";db.joinRequests=db.joinRequests.filter(j=>j.user!==target.id)}
+      else if(sid!==target.sid||s!==target.claim) claimSid(target,s,sid);
+    }else{
+      if(!name) fail("Enter a name.");
+      if(!id){db.seq++;db.users.push(target)}
+      delete target.sid; delete target.claim; db.joinRequests=db.joinRequests.filter(j=>j.user!==target.id);
+      Object.assign(target,{name,role}); if(role==="School Admin") target.school=s; else delete target.school;
+    }
+    save(); return id?"User updated":displayName(target)+" added";
+  }, id&&!self?`<button type="button" class="ghost danger" style="margin-left:auto" onclick="armRemove(this,()=>{db.users=db.users.filter(x=>x.id!=='${id}');db.joinRequests=db.joinRequests.filter(j=>j.user!=='${id}');save();toast('User removed')})">Remove</button>`:"");
+  roleFields();
+}
+function roleFields(){const r=$("#us-role").value;$("#us-school-wrap").hidden=r==="District Admin";$("#us-school-label").textContent=r==="Student"?"School":"School they manage";$("#us-sid-wrap").hidden=r!=="Student";$("#us-name-hint").textContent=r==="Student"?"(optional with a student ID)":""}
+render();
+</script>
+</body>
+</html>
