@@ -55,6 +55,21 @@ nav.tabs button[aria-current="true"]{background:var(--ink);color:var(--paper);bo
 .role{font-size:12px;font-weight:700;color:var(--blue)}
 .role.admin{color:var(--warn)}
 .role.district{color:var(--ok)}
+.role.donor{color:var(--pencil-ink)}
+.brand{border-radius:12px;padding:14px 16px;display:flex;align-items:center;gap:14px;border-bottom:6px solid var(--b-sec);background:var(--b-pri);color:var(--b-ink);flex-wrap:wrap}
+.brand .bt{flex:1;min-width:0}
+.brand .bn{font-family:var(--display);font-weight:800;font-size:20px;line-height:1.2;text-wrap:balance}
+.brand .ba{font-size:13px;opacity:.85}
+.brand button{background:transparent;color:var(--b-ink);border-color:currentColor}
+.mark{width:44px;height:44px;border-radius:10px;flex:none;display:grid;place-items:center;font-family:var(--display);font-weight:800;font-size:16px;object-fit:cover;overflow:hidden}
+.mark.sm{width:32px;height:32px;font-size:12px;border-radius:8px}
+img.mark{background:#fff}
+.named{display:flex;align-items:center;gap:10px;min-width:0}
+.swatches{display:flex;gap:12px;flex-wrap:wrap}
+.swatches label{flex:1;min-width:130px}
+input[type=color]{width:100%;height:44px;padding:4px;border-radius:10px;border:1px solid var(--rule);background:var(--paper)}
+.iconrow{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+textarea{font:inherit;font-family:var(--mono);font-size:12px;width:100%;min-height:180px;padding:10px;border-radius:10px;border:1px solid var(--rule);background:var(--paper);color:var(--ink);resize:vertical}
 .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
 .stat{background:var(--sheet);border:1px solid var(--rule);border-radius:12px;padding:12px 14px;min-width:0}
 .stat .n{font-family:var(--mono);font-weight:700;font-size:26px;font-variant-numeric:tabular-nums}
@@ -145,13 +160,24 @@ const KEY="reschool-demo-v3";
 let mem=null;
 const copy=o=>JSON.parse(JSON.stringify(o));
 
+/* ---------- Default setup ----------
+   Paste an export from "Export default settings" here to make it the starting
+   point for everyone. Leave as null to use the built-in sample setup below. */
+const DEFAULT_SETUP=null;
+const DEFAULT_COLORS={primary:"#2d4fd6",secondary:"#f4b400"};
+
 /* ---------- Sample setup ---------- */
 function seed(){
+  if(DEFAULT_SETUP){
+    const d=copy(DEFAULT_SETUP);
+    d.inventory=copy(d.baseline); d.pledges=[]; d.requests=[]; d.joinRequests=d.joinRequests||[]; d.seq=d.seq||5000;
+    return d;
+  }
   const now=Date.now(), ago=h=>new Date(now-h*36e5).toISOString();
   const items=["Pencils (box)","Pens (pack)","Notebooks","Folders","Glue Sticks","Highlighters","Calculators","Backpacks"];
   const schools=[
-    {id:"lincoln",name:"Lincoln Middle School",address:"1200 Elm Street"},
-    {id:"riverside",name:"Riverside High School",address:"88 River Road"}
+    {id:"lincoln",name:"Lincoln Middle School",address:"1200 Elm Street",primary:"#1f4e9c",secondary:"#f2b705",icon:""},
+    {id:"riverside",name:"Riverside High School",address:"88 River Road",primary:"#0f6b4f",secondary:"#c9a227",icon:""}
   ];
   const catalog={};
   schools.forEach(s=>{catalog[s.id]={};items.forEach(i=>catalog[s.id][i]={donate:true,request:true,dLimit:20,rLimit:5,star:false})});
@@ -185,14 +211,16 @@ function seed(){
       {id:"u3",role:"Student",name:"Marcus Lee",sid:"200201",claim:"riverside"},
       {id:"u7",role:"Student",name:"Taylor Morgan",sid:"",claim:""},
       {id:"u8",role:"Student",name:"Chris Diaz",sid:"100150",claim:"lincoln"},
+      {id:"u9",role:"Donor",name:"Pat Rivera"},
       {id:"u4",role:"School Admin",name:"Ms. Carter",school:"lincoln"},
       {id:"u5",role:"School Admin",name:"Mr. Okafor",school:"riverside"},
-      {id:"u6",role:"District Admin",name:"Dr. Reyes"}
+      {id:"u6",role:"ReSchool Admin",name:"Dr. Reyes"}
     ],
     pledges:[
       {id:"P-1001",user:"u3",school:"lincoln",date:ago(26),closed:false,lines:[{item:"Glue Sticks",qty:10,received:0},{item:"Folders",qty:5,received:0}]},
       {id:"P-1002",user:"u3",school:"riverside",date:ago(60),closed:false,lines:[{item:"Highlighters",qty:6,received:2}]},
-      {id:"P-1003",user:"u7",school:"lincoln",date:ago(8),closed:false,lines:[{item:"Pens (pack)",qty:4,received:0}]}
+      {id:"P-1003",user:"u7",school:"lincoln",date:ago(8),closed:false,lines:[{item:"Pens (pack)",qty:4,received:0}]},
+      {id:"P-1004",user:"u9",school:"riverside",date:ago(4),closed:false,lines:[{item:"Folders",qty:10,received:0},{item:"Pencils (box)",qty:6,received:0}]}
     ],
     requests:[
       {id:"R-2001",user:"u1",school:"lincoln",date:ago(30),lines:[line("Glue Sticks",2),line("Notebooks",1)]},
@@ -207,7 +235,9 @@ function seed(){
   d.baseline=copy(d.inventory); // the starting stock that "Reset demo data" returns to
   return d;
 }
-function load(){let d=null;try{const s=localStorage.getItem(KEY);if(s)d=JSON.parse(s)}catch(e){}d=d||mem||seed();if(!d.baseline)d.baseline=copy(d.inventory);if(!d.joinRequests)d.joinRequests=[];return d}
+function load(){let d=null;try{const s=localStorage.getItem(KEY);if(s)d=JSON.parse(s)}catch(e){}d=d||mem||seed();if(!d.baseline)d.baseline=copy(d.inventory);if(!d.joinRequests)d.joinRequests=[];
+  d.users.forEach(u=>{if(u.role==="District Admin")u.role="ReSchool Admin"}); // renamed role
+  return d}
 function save(){mem=db;try{localStorage.setItem(KEY,JSON.stringify(db))}catch(e){}}
 let db=load();
 let me=null; try{me=db.users.find(u=>u.id===sessionStorage.getItem("reschool-user"))||null}catch(e){}
@@ -360,6 +390,12 @@ function signUp(first,last,sid,s){
   const result=sid?claimSid(u,s,sid):"none";
   db.users.push(u); save(); return {u,result};
 }
+function signUpDonor(first,last){
+  first=first.trim(); last=last.trim();
+  if(!first||!last) fail("Enter your first and last name.");
+  const u={id:"u"+(++db.seq),role:"Donor",name:`${first} ${last}`};
+  db.users.push(u); save(); return u;
+}
 function approveAccess(j){
   const u=db.users.find(x=>x.id===j.user)||{name:""};
   if(!rosterEntry(j.school,j.sid)){const [first="",...rest]=(u.name||"").split(" ");db.rosters[j.school].push({sid:j.sid,first,last:rest.join(" "),active:true})}
@@ -367,24 +403,47 @@ function approveAccess(j){
 }
 function denyAccess(j){db.joinRequests=db.joinRequests.filter(x=>x!==j);save()}
 
+/* ---------- School branding ---------- */
+function colorsOf(s){const sc=typeof s==="string"?school(s):s;return {primary:sc.primary||DEFAULT_COLORS.primary,secondary:sc.secondary||DEFAULT_COLORS.secondary}}
+// Pick black or white text, whichever reads better on the school's color
+function inkOn(hex){
+  const h=(hex||"#000").replace("#",""), n=h.length===3?h.split("").map(c=>c+c).join(""):h;
+  const [r,g,b]=[0,2,4].map(i=>parseInt(n.substr(i,2),16)/255).map(c=>c<=.03928?c/12.92:((c+.055)/1.055)**2.4);
+  const L=.2126*r+.7152*g+.0722*b; return L>.4?"#111827":"#ffffff";
+}
+function initials(name){return (name||"?").split(/\s+/).filter(w=>/^[A-Za-z]/.test(w)).slice(0,2).map(w=>w[0].toUpperCase()).join("")||"?"}
+function mark(sid,small){
+  const s=school(sid), c=colorsOf(s), cls="mark"+(small?" sm":"");
+  return s.icon?`<img class="${cls}" src="${s.icon}" alt="">`:`<span class="${cls}" style="background:${c.primary};color:${inkOn(c.primary)};box-shadow:inset 0 -4px 0 ${c.secondary}" aria-hidden="true">${esc(initials(s.name))}</span>`;
+}
+function named(sid,extra=""){return `<div class="named">${mark(sid,true)}<div style="min-width:0"><div class="title">${esc(school(sid).name)}</div>${extra}</div></div>`}
+function banner(sid,action=""){
+  const s=school(sid), c=colorsOf(s);
+  return `<div class="brand" style="--b-pri:${c.primary};--b-sec:${c.secondary};--b-ink:${inkOn(c.primary)}">${mark(sid)}
+  <div class="bt"><div class="bn">${esc(s.name)}</div><div class="ba">${esc(s.address)||"No address yet"}</div></div>${action}</div>`;
+}
+
 /* ---------- Shell ---------- */
-const ROLE_LABEL={"Student":"Student","School Admin":"School admin","District Admin":"District admin"};
+const ROLE_LABEL={"Student":"Student","Donor":"Donor","School Admin":"School admin","ReSchool Admin":"ReSchool admin"};
+const ROLES=["Student","Donor","School Admin","ReSchool Admin"];
 function render(){
   if(me) me=db.users.find(u=>u.id===me.id)||null;
   $("#who").innerHTML=me?`<span>${esc(displayName(me))} · <b>${ROLE_LABEL[me.role]}</b>${me.role==="School Admin"?", "+esc(school(me.school).name):me.role==="Student"&&activeSchool(me)?", "+esc(school(activeSchool(me)).name):""}</span><button class="small" onclick="logout()">Sign out</button>`:"";
-  if(!me) return authScreen==="signup"?renderSignup():renderLogin();
+  if(!me) return authScreen==="signup"?renderSignup():authScreen==="donor"?renderDonorSignup():renderLogin();
   const T={
     "Student":[["home","Home",sHome],["donate","Donate",sDonate],["request","Request",sRequest],["activity","My activity",sActivity]],
+    "Donor":[["home","Home",oHome],["donate","Donate",sDonate],["activity","My donations",sActivity]],
     "School Admin":[["home","Dashboard",aHome],["pledges","Donations",aPledges],["requests","Requests",aRequests],["supplies","Supplies",aSupplies],["roster","Students",aRoster]],
-    "District Admin":[["home","Overview",dHome],["schools","Schools",dSchools],["supplies","Supplies",aSupplies],["roster","Rosters",aRoster],["users","Users",dUsers]]
+    "ReSchool Admin":[["home","Overview",dHome],["schools","Schools",dSchools],["supplies","Supplies",aSupplies],["roster","Rosters",aRoster],["users","Users",dUsers]]
   }[me.role];
   if(!T.some(t=>t[0]===tab)) tab="home";
   $("#app").innerHTML=`<nav class="tabs">${T.map(([k,l])=>`<button aria-current="${tab===k}" onclick="go('${k}')">${l}</button>`).join("")}</nav>`+T.find(t=>t[0]===tab)[2]()+foot();
   if(cart.mode) updateCart();
 }
 function foot(){
-  const tools=me&&me.role==="District Admin"?`<div class="actions">
+  const tools=me&&me.role==="ReSchool Admin"?`<div class="actions">
     <button class="small" onclick="resetDemo()" title="Clears all requests and donations and puts stock back to starting counts">Reset demo data</button>
+    <button class="small" onclick="openExport()">Export default settings</button>
     <button class="small ghost danger" onclick="armRestore(this)">Restore original setup</button></div>`:"";
   return `<div class="foot"><span>Demo data is saved in this browser only.</span>${tools}</div>`;
 }
@@ -393,13 +452,13 @@ function studentWhere(u){
   return {active:n,inactive:n+" (inactive)",pending:n+" (ID waiting for approval)",missing:n+" (ID not confirmed)",none:"No school linked · can donate"}[st];
 }
 function renderLogin(){
-  const where=u=>u.role==="Student"?studentWhere(u):u.role==="School Admin"?esc(school(u.school).name):"All schools";
-  const card=u=>`<button class="user" onclick="login('${u.id}')"><span class="role ${u.role==="School Admin"?"admin":u.role==="District Admin"?"district":""}">${ROLE_LABEL[u.role]}</span><b>${esc(displayName(u))}</b><span class="meta">${where(u)}</span></button>`;
+  const where=u=>u.role==="Student"?studentWhere(u):u.role==="Donor"?"Can donate to any school":u.role==="School Admin"?esc(school(u.school).name):"All schools";
+  const card=u=>`<button class="user" onclick="login('${u.id}')"><span class="role ${{"School Admin":"admin","ReSchool Admin":"district","Donor":"donor"}[u.role]||""}">${ROLE_LABEL[u.role]}</span><b>${esc(displayName(u))}</b><span class="meta">${where(u)}</span></button>`;
   const group=(r,t)=>{const us=db.users.filter(u=>u.role===r);return us.length?`<h2>${t}</h2><div class="users">${us.map(card).join("")}</div>`:""};
   $("#app").innerHTML=`<h1>Give what you have. Get what you need.</h1>
-  <p class="sub">ReSchool moves donated school supplies to the students who need them. Sign up as a new student, or pick a demo account.</p>
-  <div class="actions"><button class="primary" onclick="authScreen='signup';render()">Student sign up</button></div>
-  ${group("Student","Students")}${group("School Admin","School admins")}${group("District Admin","District admin")}
+  <p class="sub">ReSchool moves donated school supplies to the students who need them. Sign up, or pick a demo account.</p>
+  <div class="actions"><button class="primary" onclick="authScreen='signup';render()">Student sign up</button><button onclick="authScreen='donor';render()">Sign up to donate</button></div>
+  ${group("Student","Students")}${group("Donor","Donors")}${group("School Admin","School admins")}${group("ReSchool Admin","ReSchool admin")}
   <h2>How it works</h2>
   <div class="note">Anyone can <b>donate</b> to any school. Students <b>request</b> supplies from the school where their student ID is active. Stock only changes when a school admin <b>receives</b> a donation or <b>approves</b> a request. If something is out of stock, students wait in line and the item shows as <b>High priority</b> to donors.</div>`+foot();
 }
@@ -422,6 +481,18 @@ function renderSignup(){
     <div class="actions"><button class="primary" type="submit" id="su-go">Create account</button><button type="button" class="ghost" onclick="authScreen='login';render()">Back</button></div>
   </form>
   <p class="hint" style="margin-top:14px">Demo: 100103 at Lincoln and 200202 at Riverside are on the roster. 100104 at Lincoln is inactive. Any other number shows the approval flow.</p>`;
+}
+function renderDonorSignup(){
+  $("#app").innerHTML=`<h1>Sign up to donate</h1>
+  <p class="sub">You don't need to be connected to a school. Parents, neighbors, businesses and community groups can donate supplies to any school.</p>
+  <form class="card" onsubmit="doDonorSignUp(event)">
+    <div class="two">
+      <label for="dn-first">First name<input id="dn-first" type="text" maxlength="30" autocomplete="given-name" required></label>
+      <label for="dn-last">Last name<input id="dn-last" type="text" maxlength="30" autocomplete="family-name" required></label>
+    </div>
+    <div class="callout err" id="dn-err" hidden></div>
+    <div class="actions"><button class="primary" type="submit">Create account</button><button type="button" class="ghost" onclick="authScreen='login';render()">Back</button></div>
+  </form>`;
 }
 // Warn before signing up with an ID the school doesn't have yet; a second tap confirms.
 function needsWarn(prefix,s,sid){
@@ -496,7 +567,8 @@ function sHome(){
   const mine=db.requests.filter(r=>r.user===me.id), s=activeSchool(me);
   const openLines=mine.flatMap(r=>r.lines.filter(l=>l.open).map(l=>({r,l})));
   return `<h1>Hi, ${esc(displayName(me).split(" ")[0])}</h1>
-  <p class="sub">${s?esc(school(s).name):{inactive:"Your student ID is inactive. You can still donate.",pending:`Waiting for ${esc(school(me.claim).name)} to confirm your student ID. You can donate in the meantime.`,missing:"Your student ID wasn't confirmed. You can still donate.",none:"No school linked yet. You can donate to any school, and add your student ID to request supplies."}[studentState(me)]}</p>
+  ${s?`<div style="margin:12px 0 16px">${banner(s)}</div>`:""}
+  <p class="sub">${s?"":{inactive:"Your student ID is inactive. You can still donate.",pending:`Waiting for ${esc(school(me.claim).name)} to confirm your student ID. You can donate in the meantime.`,missing:"Your student ID wasn't confirmed. You can still donate.",none:"No school linked yet. You can donate to any school, and add your student ID to request supplies."}[studentState(me)]}</p>
   <div class="stats"><div class="stat"><div class="eyebrow">Items requested</div><div class="n">${openLines.length}</div></div>
   <div class="stat"><div class="eyebrow">Waitlisted</div><div class="n">${openLines.filter(x=>lineStatus(x.r,x.l)==="Waitlisted").length}</div></div>
   <div class="stat"><div class="eyebrow">Donations</div><div class="n">${db.pledges.filter(p=>p.user===me.id).length}</div></div></div>
@@ -509,10 +581,24 @@ function needsList(s){
   if(!n.length) return `<div class="empty">Nothing urgent right now.</div>`;
   return `<div class="needs">${n.map(x=>`<div class="need"><div><b>${esc(x.item)}</b><div class="meta">${x.short?`${x.short} short · ${plural(x.students,"student")} waiting`:"Flagged by the school"}</div></div>${x.short?'<span class="tag hot">High priority</span>':'<span class="tag">Priority</span>'}</div>`).join("")}</div>`;
 }
+function oHome(){
+  cart={mode:null};
+  const mine=db.pledges.filter(p=>p.user===me.id);
+  return `<h1>Hi, ${esc(displayName(me).split(" ")[0])}</h1>
+  <p class="sub">Thanks for helping. Schools list what they need most, so your donation goes where it helps.</p>
+  <div class="stats"><div class="stat"><div class="eyebrow">Donations</div><div class="n">${mine.length}</div></div>
+  <div class="stat"><div class="eyebrow">Still to drop off</div><div class="n">${mine.filter(pledgeOpen).length}</div></div>
+  <div class="stat"><div class="eyebrow">Items received</div><div class="n">${sum(mine,p=>sum(p.lines,l=>l.received))}</div></div></div>
+  <h2>Schools that need help</h2>
+  <div class="list">${db.schools.map(x=>{const n=needs(x.id),hi=n.filter(v=>v.short);
+    return `<div class="row"><div class="info">${named(x.id,`<div class="meta">${hi.length?`${plural(hi.length,"item")} high priority: ${hi.slice(0,3).map(v=>esc(v.item)).join(", ")}`:n.length?"A few priority items":"No urgent needs"}</div>`)}
+    <button class="small ${hi.length?"primary":""}" onclick="donSchool='${x.id}';go('donate')">Donate</button></div></div>`}).join("")}</div>`;
+}
 function sDonate(){
   donSchool=db.schools.some(s=>s.id===donSchool)?donSchool:(activeSchool(me)||db.schools[0].id);
   return `<h1>Donate supplies</h1><p class="sub">Anyone can donate to any school. Pick what you're bringing; it counts toward the school's stock once their office receives it.</p>
   <label for="d-school" style="margin-bottom:14px">School<select id="d-school" onchange="donSchool=this.value;render()">${db.schools.map(s=>`<option value="${s.id}" ${s.id===donSchool?"selected":""}>${esc(s.name)}</option>`).join("")}</select></label>
+  <div style="margin-bottom:14px">${banner(donSchool)}</div>
   ${cartForm("donate",donSchool,"Pledge donation")}`;
 }
 function sRequest(){
@@ -529,12 +615,13 @@ function sRequest(){
   if(st==="missing") return `<h1>Request supplies</h1><div class="callout err">${sc} didn't confirm student ID ${esc(me.sid)}. Check the number with your school office and try again.</div><h2>Enter your ID again</h2>${link}`;
   if(st==="inactive") return `<h1>Request supplies</h1><div class="callout err">Your student ID is marked inactive at ${sc}. Ask the school office to reactivate it. You can still donate.</div>`;
   const s=activeSchool(me);
-  return `<h1>Request supplies</h1><p class="sub">From ${esc(school(s).name)}. Out-of-stock items can still be requested. You'll be placed in line and get them when they're donated.</p>
+  return `<h1>Request supplies</h1><div style="margin:12px 0">${banner(s)}</div><p class="sub">Out-of-stock items can still be requested. You'll be placed in line and get them when they're donated.</p>
   ${cartForm("request",s,"Send request")}`;
 }
 function sActivity(){
   cart={mode:null};
   const rs=db.requests.filter(r=>r.user===me.id).sort((a,b)=>a.date<b.date?1:-1), ps=db.pledges.filter(p=>p.user===me.id);
+  if(me.role==="Donor") return `<h1>My donations</h1>${ps.length?`<div class="list">${ps.map(p=>pledgeCard(p,false)).join("")}</div>`:`<div class="empty">No donations yet. Head to Donate to pick a school.</div>`}`;
   return `<h1>My activity</h1>
   <h2>Requests</h2>${rs.length?`<div class="list">${rs.map(r=>reqCard(r,false)).join("")}</div>`:`<div class="empty">No requests yet.</div>`}
   <h2>Donations</h2>${ps.length?`<div class="list">${ps.map(p=>pledgeCard(p,false)).join("")}</div>`:`<div class="empty">No donations yet.</div>`}`;
@@ -547,9 +634,9 @@ function aHome(){
   const op=db.pledges.filter(p=>p.school===s&&pledgeOpen(p)).length;
   const lines=db.requests.filter(r=>r.school===s).flatMap(r=>r.lines.filter(l=>l.open).map(l=>({r,l})));
   const pend=db.joinRequests.filter(j=>j.school===s).length;
-  return `<h1>${esc(sc.name)}</h1><p class="sub">You only see this school's donations, requests and students.</p>
+  return `<h1>Dashboard</h1><p class="sub">You only see this school's donations, requests and students.</p>
   ${pend?`<div class="callout line info" style="margin-bottom:14px"><span>${plural(pend,"student ID")} waiting for your approval.</span><button class="small" onclick="go('roster')">Review</button></div>`:""}
-  <div class="card"><div class="info"><div><div class="eyebrow">School info</div><b>${esc(sc.name)}</b><div class="meta">${esc(sc.address)||"No address yet"}</div></div><button class="small" onclick="openSchool('${s}')">Edit</button></div></div>
+  ${banner(s,`<button class="small" onclick="openSchool('${s}')">Edit school info</button>`)}
   <h2>Today</h2>
   <div class="stats"><div class="stat"><div class="eyebrow">Open donations</div><div class="n">${op}</div></div>
   <div class="stat"><div class="eyebrow">Ready to approve</div><div class="n">${lines.filter(x=>approvable(x.r,x.l)>0).length}</div></div>
@@ -570,7 +657,7 @@ function aRequests(){
   ${rs.length?`<div class="list">${rs.map(r=>reqCard(r,true)).join("")}</div>`:`<div class="empty">No requests for this school yet.</div>`}`;
 }
 function schoolPicker(label){
-  if(me.role!=="District Admin"){pickSchool=me.school;return ""}
+  if(me.role!=="ReSchool Admin"){pickSchool=me.school;return ""}
   pickSchool=db.schools.some(s=>s.id===pickSchool)?pickSchool:db.schools[0].id;
   return `<label for="pick-school" style="margin-bottom:14px">${label}<select id="pick-school" onchange="pickSchool=this.value;render()">${db.schools.map(x=>`<option value="${x.id}" ${x.id===pickSchool?"selected":""}>${esc(x.name)}</option>`).join("")}</select></label>`;
 }
@@ -578,7 +665,7 @@ function aSupplies(){
   cart={mode:null};
   const picker=schoolPicker("School"), s=pickSchool, lim=(on,n)=>on?n:"Off";
   return `<h1>Supplies</h1><p class="sub">Choose what can be donated and requested, the most allowed per donation or request, and which items to flag as a priority.</p>
-  ${picker}${me.role==="District Admin"?`<div class="actions" style="margin-bottom:14px"><button onclick="openNewItem()">Add supply item</button></div>`:""}
+  ${picker}${me.role==="ReSchool Admin"?`<div class="actions" style="margin-bottom:14px"><button onclick="openNewItem()">Add supply item</button></div>`:""}
   <div class="tablebox"><table><thead><tr><th>Item</th><th class="num">On hand</th><th class="num">Waiting</th><th class="num">Donate max</th><th class="num">Request max</th><th></th></tr></thead><tbody>
   ${db.items.map((i,k)=>{const c=setting(s,i),q=stock(s,i),w=unitsWaiting(s,i);
     return `<tr><td><b>${esc(i)}</b> ${c.star?'<span class="tag">Priority</span>':""}</td>
@@ -592,7 +679,7 @@ function aRoster(){
   cart={mode:null};
   const picker=schoolPicker("School"), s=pickSchool, list=db.rosters[s]||[];
   const pend=db.joinRequests.filter(j=>j.school===s);
-  return `<h1>${me.role==="District Admin"?"Rosters":"Students"}</h1><p class="sub">Students sign up with these IDs and are matched to this school. Only active students can request supplies.</p>
+  return `<h1>${me.role==="ReSchool Admin"?"Rosters":"Students"}</h1><p class="sub">Students sign up with these IDs and are matched to this school. Only active students can request supplies.</p>
   ${picker}
   ${pend.length?`<h2>Waiting for approval</h2><p class="sub">These students signed up with an ID that isn't on the roster. Approving adds the ID to the roster as active.</p>
   <div class="list" style="margin-bottom:8px">${pend.map(j=>{const u=db.users.find(x=>x.id===j.user);return `<div class="row"><div class="info"><div>
@@ -608,17 +695,17 @@ function aRoster(){
   </tbody></table></div><p class="hint">Tap a status to switch it between active and inactive.</p>`:`<div class="empty">No student IDs yet. Add one to let a student sign up.</div>`}`;
 }
 
-/* ---------- District admin ---------- */
+/* ---------- ReSchool admin ---------- */
 function dHome(){
   cart={mode:null};
-  return `<h1>District overview</h1><p class="sub">Every school at a glance.</p>
+  return `<h1>All schools</h1><p class="sub">Every school at a glance.</p>
   <div class="list">${db.schools.map(s=>{
     const op=db.pledges.filter(p=>p.school===s.id&&pledgeOpen(p)).length;
     const ol=sum(db.requests.filter(r=>r.school===s.id),r=>r.lines.filter(l=>l.open).length);
     const short=needs(s.id).filter(x=>x.short).length;
     const act=(db.rosters[s.id]||[]).filter(e=>e.active).length, ids=db.joinRequests.filter(j=>j.school===s.id).length;
     const admins=db.users.filter(u=>u.role==="School Admin"&&u.school===s.id).map(u=>esc(u.name)).join(", ")||"No admin assigned";
-    return `<div class="row"><div class="top"><div><div class="title">${esc(s.name)}</div><div class="meta">${esc(s.address)} · Admin: ${admins}</div></div>${short?`<span class="tag hot">${short} high priority</span>`:""}</div>
+    return `<div class="row"><div class="top">${named(s.id,`<div class="meta">${esc(s.address)} · Admin: ${admins}</div>`)}${short?`<span class="tag hot">${short} high priority</span>`:""}</div>
     <div class="meta"><span class="qty">${op}</span> open donations · <span class="qty">${ol}</span> items requested · <span class="qty">${act}</span> active students${ids?` · <span class="qty">${ids}</span> IDs to approve`:""}</div>
     <div class="actions"><button class="small" onclick="pickSchool='${s.id}';go('supplies')">Supplies</button><button class="small" onclick="pickSchool='${s.id}';go('roster')">Roster</button><button class="small ghost" onclick="openSchool('${s.id}')">Edit school</button></div></div>`}).join("")}</div>`;
 }
@@ -626,12 +713,12 @@ function dSchools(){
   cart={mode:null};
   return `<h1>Schools</h1><p class="sub">Add schools and keep their details current. School admins can also edit their own school's info.</p>
   <div class="actions" style="margin-bottom:14px"><button class="primary" onclick="openSchool()">Add school</button></div>
-  <div class="list">${db.schools.map(s=>`<div class="row"><div class="info"><div><div class="title">${esc(s.name)}</div><div class="meta">${esc(s.address)||"No address yet"}</div></div><button class="small" onclick="openSchool('${s.id}')">Edit</button></div></div>`).join("")}</div>`;
+  <div class="list">${db.schools.map(s=>`<div class="row"><div class="info">${named(s.id,`<div class="meta">${esc(s.address)||"No address yet"}</div>`)}<button class="small" onclick="openSchool('${s.id}')">Edit</button></div></div>`).join("")}</div>`;
 }
 function dUsers(){
   cart={mode:null};
-  const where=u=>u.role==="School Admin"?esc(school(u.school).name):u.role==="District Admin"?"All schools":studentWhere(u);
-  return `<h1>Users</h1><p class="sub">Demo accounts. Students can also sign up themselves.</p>
+  const where=u=>u.role==="School Admin"?esc(school(u.school).name):u.role==="ReSchool Admin"?"All schools":u.role==="Donor"?"Any school":studentWhere(u);
+  return `<h1>Users</h1><p class="sub">Demo accounts. Students and donors can also sign up themselves.</p>
   <div class="actions" style="margin-bottom:14px"><button class="primary" onclick="openUser()">Add user</button></div>
   <div class="tablebox"><table><thead><tr><th>Name</th><th>Role</th><th>School</th><th></th></tr></thead><tbody>
   ${db.users.map(u=>`<tr><td><b>${esc(displayName(u))}</b>${u.sid?`<div class="meta mono">ID ${esc(u.sid)}</div>`:""}</td><td>${ROLE_LABEL[u.role]}</td><td>${where(u)}</td><td><button class="small" onclick="openUser('${u.id}')">Edit</button></td></tr>`).join("")}
@@ -680,6 +767,11 @@ function doSignUp(e){
     const {u}=signUp($("#su-first").value,$("#su-last").value,sid,s);
     claimWarn=""; login(u.id); toast(claimToast(u));
   }catch(x){err.textContent=x.message;err.hidden=false}
+}
+function doDonorSignUp(e){
+  e.preventDefault();
+  try{const u=signUpDonor($("#dn-first").value,$("#dn-last").value);login(u.id);toast(`Welcome, ${u.name.split(" ")[0]}! Pick a school to donate to.`)}
+  catch(x){const el=$("#dn-err");el.textContent=x.message;el.hidden=false}
 }
 function doLink(e){
   e.preventDefault();
@@ -754,21 +846,55 @@ function openNewItem(){
     save(); return n+" added";
   });
 }
+let sheetIcon="";
 function openSchool(id){
-  const s=id?school(id):{name:"",address:""};
+  const s=id?school(id):{name:"",address:"",...DEFAULT_COLORS,icon:""}, c=colorsOf(s);
+  sheetIcon=s.icon||"";
   openSheet(id?"Edit school info":"Add school",`
     <label for="sc-name">School name<input id="sc-name" type="text" maxlength="60" value="${esc(s.name)}" required></label>
-    <label for="sc-addr">Address<input id="sc-addr" type="text" maxlength="80" value="${esc(s.address)}"></label>`,
+    <label for="sc-addr">Address<input id="sc-addr" type="text" maxlength="80" value="${esc(s.address)}"></label>
+    <div class="swatches">
+      <label for="sc-pri">Primary color<input id="sc-pri" type="color" value="${c.primary}" oninput="previewBrand()"></label>
+      <label for="sc-sec">Secondary color<input id="sc-sec" type="color" value="${c.secondary}" oninput="previewBrand()"></label>
+    </div>
+    <div><div class="eyebrow" style="margin-bottom:6px">School icon</div>
+    <div class="iconrow"><span id="sc-prev"></span>
+      <label class="small" for="sc-icon" style="flex-direction:row;cursor:pointer;border:1px solid var(--rule);border-radius:10px;padding:6px 10px;font-size:13px">Upload image<input id="sc-icon" type="file" accept="image/*" onchange="readIcon(this)" style="position:absolute;width:1px;height:1px;opacity:0"></label>
+      <button type="button" class="small ghost" onclick="sheetIcon='';previewBrand()">Remove icon</button></div>
+    <span class="hint">PNG or JPG. It's cropped to a square and shrunk to 128 pixels.</span></div>
+    <div id="sc-banner"></div>`,
   id?"Save":"Add school",()=>{
     const name=$("#sc-name").value.trim(), address=$("#sc-addr").value.trim();
+    const brand={primary:$("#sc-pri").value,secondary:$("#sc-sec").value,icon:sheetIcon};
     if(!name) fail("Enter a school name.");
     if(db.schools.some(x=>x.name.toLowerCase()===name.toLowerCase()&&x.id!==id)) fail("Another school already has that name.");
-    if(id){Object.assign(s,{name,address});save();return "School info saved"}
+    if(id){Object.assign(s,{name,address},brand);save();return "School info saved"}
     const nid="s"+(++db.seq);
-    db.schools.push({id:nid,name,address}); db.rosters[nid]=[]; db.catalog[nid]={}; db.inventory[nid]={}; db.baseline[nid]={};
+    db.schools.push({id:nid,name,address,...brand}); db.rosters[nid]=[]; db.catalog[nid]={}; db.inventory[nid]={}; db.baseline[nid]={};
     db.items.forEach(i=>{db.catalog[nid][i]={donate:true,request:true,dLimit:20,rLimit:5,star:false};db.inventory[nid][i]=0;db.baseline[nid][i]=0});
     save(); return name+" added";
   });
+  previewBrand();
+}
+// Live preview of the banner while editing colors and icon
+function previewBrand(){
+  const tmp={id:"__preview",name:$("#sc-name").value||"School name",address:$("#sc-addr").value,primary:$("#sc-pri").value,secondary:$("#sc-sec").value,icon:sheetIcon};
+  db.schools.push(tmp);
+  $("#sc-prev").innerHTML=mark("__preview"); $("#sc-banner").innerHTML=banner("__preview");
+  db.schools.pop();
+}
+function readIcon(input){
+  const f=input.files&&input.files[0]; if(!f) return;
+  if(!/^image\//.test(f.type)){toast("Choose an image file.");return}
+  if(f.size>8*1024*1024){toast("That image is over 8 MB. Choose a smaller one.");return}
+  const rd=new FileReader();
+  rd.onload=()=>{const img=new Image();
+    img.onload=()=>{const N=128,cv=document.createElement("canvas");cv.width=cv.height=N;const g=cv.getContext("2d");
+      const side=Math.min(img.width,img.height);g.drawImage(img,(img.width-side)/2,(img.height-side)/2,side,side,0,0,N,N);
+      sheetIcon=cv.toDataURL("image/png");previewBrand()};
+    img.onerror=()=>toast("That image couldn't be read. Try a PNG or JPG.");
+    img.src=rd.result};
+  rd.readAsDataURL(f);
 }
 function openRoster(s,k){
   const e=k!=null?db.rosters[s][k]:{sid:"",first:"",last:"",active:true};
@@ -793,7 +919,7 @@ function openUser(id){
   const self=id&&id===me.id;
   openSheet(id?"Edit user":"Add user",`
     <label for="us-name">Name <span class="hint" id="us-name-hint"></span><input id="us-name" type="text" maxlength="40" value="${esc(u.name)}"></label>
-    <label for="us-role">Role<select id="us-role" onchange="roleFields()" ${self?"disabled":""}>${["Student","School Admin","District Admin"].map(r=>`<option value="${r}" ${u.role===r?"selected":""}>${ROLE_LABEL[r]}</option>`).join("")}</select></label>
+    <label for="us-role">Role<select id="us-role" onchange="roleFields()" ${self?"disabled":""}>${ROLES.map(r=>`<option value="${r}" ${u.role===r?"selected":""}>${ROLE_LABEL[r]}</option>`).join("")}</select></label>
     <label for="us-school" id="us-school-wrap"><span id="us-school-label">School</span><select id="us-school">${db.schools.map(s=>`<option value="${s.id}" ${sel===s.id?"selected":""}>${esc(s.name)}</option>`).join("")}</select></label>
     <label for="us-sid" id="us-sid-wrap">Student ID <span class="hint">(optional; if it isn't on the roster it goes to the school for approval)</span><input id="us-sid" type="text" maxlength="12" value="${esc(u.sid||"")}" autocomplete="off"></label>`,
   id?"Save":"Add user",()=>{
@@ -817,7 +943,25 @@ function openUser(id){
   }, id&&!self?`<button type="button" class="ghost danger" style="margin-left:auto" onclick="armRemove(this,()=>{db.users=db.users.filter(x=>x.id!=='${id}');db.joinRequests=db.joinRequests.filter(j=>j.user!=='${id}');save();toast('User removed')})">Remove</button>`:"");
   roleFields();
 }
-function roleFields(){const r=$("#us-role").value;$("#us-school-wrap").hidden=r==="District Admin";$("#us-school-label").textContent=r==="Student"?"School":"School they manage";$("#us-sid-wrap").hidden=r!=="Student";$("#us-name-hint").textContent=r==="Student"?"(optional with a student ID)":""}
+/* ---------- Export default settings (ReSchool admin) ---------- */
+function exportSetup(){
+  return JSON.stringify({format:"reschool-setup",version:1,exported:new Date().toISOString(),
+    items:db.items,schools:db.schools,catalog:db.catalog,baseline:db.baseline,rosters:db.rosters,users:db.users,joinRequests:db.joinRequests,seq:db.seq},null,1);
+}
+function openExport(){
+  const txt=exportSetup(), kb=Math.round(txt.length/1024);
+  $("#modal").innerHTML=`<div class="scrim" onclick="if(event.target===this)closeSheet()"><div class="sheet" role="dialog" aria-label="Export default settings">
+  <h3>Export default settings</h3>
+  <div class="meta">Schools, colors and icons, supply settings, starting stock, rosters and users (${kb} KB). Donations and requests aren't included. Copy this and paste it into a chat with Claude to make it the starting setup for everyone.</div>
+  <textarea id="ex-text" readonly aria-label="Settings">${esc(txt)}</textarea>
+  <div class="actions"><button class="primary" type="button" onclick="copyExport()">Copy</button><button class="ghost" type="button" onclick="closeSheet()">Close</button></div></div></div>`;
+}
+function copyExport(){
+  const t=$("#ex-text");
+  const pick=()=>{t.focus();t.select();toast("Text selected. Copy it with your device's copy command.")};
+  try{navigator.clipboard.writeText(t.value).then(()=>toast("Copied to clipboard"),pick)}catch(e){pick()}
+}
+function roleFields(){const r=$("#us-role").value;$("#us-school-wrap").hidden=r==="ReSchool Admin"||r==="Donor";$("#us-school-label").textContent=r==="Student"?"School":"School they manage";$("#us-sid-wrap").hidden=r!=="Student";$("#us-name-hint").textContent=r==="Student"?"(optional with a student ID)":""}
 render();
 </script>
 </body>

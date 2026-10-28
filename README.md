@@ -16,7 +16,9 @@ Some students start the year with more supplies than they need, and others go wi
 - **Out-of-stock items can still be requested.** Students wait in line, first come first served, and the item shows as **High priority** to donors.
 - **School admins** choose which items can be donated or requested, set the most allowed per donation or request, and manage their student ID roster (active or inactive).
 - **Students sign up** with a student ID and school, or with their name. An ID that isn't on the school's roster is sent to the school admin for approval.
-- **A district admin** manages schools, supply items, users and rosters across all schools.
+- **Donors** can sign up without any connection to a school and donate to any school.
+- **Schools have their own look**: an uploaded icon plus primary and secondary colors.
+- **A ReSchool admin** manages schools, supply items, users and rosters across all schools, resets the demo, and exports the setup.
 
 ## The rules
 
@@ -39,14 +41,23 @@ There are no passwords. Pick an account on the sign-in screen.
 | Marcus Lee | Student at Riverside High School |
 | Taylor Morgan | Signed up with a name only (can donate, not request) |
 | Chris Diaz | ID waiting for Lincoln's approval |
+| Pat Rivera | Community donor (no school connection) |
 | Ms. Carter / Mr. Okafor | School admins for Lincoln / Riverside |
-| Dr. Reyes | District admin (can reset demo data) |
+| Dr. Reyes | ReSchool admin (reset, export settings) |
 
 ## Limitations (it's a proof of concept)
 
 - Data is saved in each person's browser, so different devices don't share data.
 - There are no real passwords or security.
 - A real version would need a shared database and real sign-in.
+
+## Changing the default setup
+
+Changes made inside the app are saved only in that browser. To make a setup the starting point for everyone:
+
+1. Sign in as the ReSchool admin and choose **Export default settings**.
+2. Copy the text.
+3. Paste it into `DEFAULT_SETUP` near the top of the script in `index.html` (or hand it to Claude to do).
 
 ## Running it
 
