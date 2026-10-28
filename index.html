@@ -94,7 +94,7 @@ form.card,.card{background:var(--sheet);border:1px solid var(--rule);border-radi
 label{display:flex;flex-direction:column;gap:6px;font-weight:600;font-size:14px}
 label.check{flex-direction:row;align-items:center;gap:10px;font-weight:500}
 label.check input{width:20px;height:20px;accent-color:var(--blue);flex:none}
-select,input[type=number],input[type=text]{font:inherit;padding:10px 12px;border-radius:10px;border:1px solid var(--rule);background:var(--paper);color:var(--ink);width:100%}
+select,input[type=number],input[type=text],input[type=tel],input[type=email],input[type=date]{font:inherit;padding:10px 12px;border-radius:10px;border:1px solid var(--rule);background:var(--paper);color:var(--ink);width:100%}
 .hint{font-size:13px;color:var(--muted);font-weight:400}
 .callout{border-radius:10px;padding:10px 12px;font-size:14px;background:var(--blue-soft)}
 .callout.line{background:var(--warn-soft);color:var(--warn)}
@@ -190,14 +190,14 @@ function seed(){
     },
     rosters:{
       haa:[
-        {sid:"100101",first:"Jane",last:"Doe",active:true},
-        {sid:"100102",first:"John",last:"Smith",active:true},
-        {sid:"100103",first:"Emily",last:"Jones",active:true},
-        {sid:"100104",first:"Michael",last:"Brown",active:false}
+        {sid:"100101",first:"Jane",last:"Doe",dob:"2011-03-14",active:true},
+        {sid:"100102",first:"John",last:"Smith",dob:"2010-09-02",active:true},
+        {sid:"100103",first:"Emily",last:"Jones",dob:"2011-06-21",active:true},
+        {sid:"100104",first:"Michael",last:"Brown",dob:"2010-12-05",active:false}
       ],
       demo2:[
-        {sid:"200201",first:"Sarah",last:"Miller",active:true},
-        {sid:"200202",first:"David",last:"Wilson",active:true}
+        {sid:"200201",first:"Sarah",last:"Miller",dob:"2009-04-18",active:true},
+        {sid:"200202",first:"David",last:"Wilson",dob:"2009-11-30",active:true}
       ]
     },
     users:[
@@ -205,8 +205,8 @@ function seed(){
       {id:"u2",role:"Student",name:"John Smith",sid:"100102",claim:"haa"},
       {id:"u3",role:"Student",name:"Sarah Miller",sid:"200201",claim:"demo2"},
       {id:"u7",role:"Student",name:"Mary Johnson",sid:"",claim:""},
-      {id:"u8",role:"Student",name:"Robert Davis",sid:"100150",claim:"haa"},
-      {id:"u9",role:"Donor",name:"Pat Rivera"},
+      {id:"u8",role:"Student",name:"Robert Davis",sid:"100150",claim:"haa",dob:"2011-01-09",email:"robert.davis@example.com"},
+      {id:"u9",role:"Donor",name:"Pat Rivera",org:"Rivera Family Hardware",phone:"(555) 010-0142",email:"pat@example.com"},
       {id:"u4",role:"School Admin",name:"Mr. Castillo",school:"haa"},
       {id:"u5",role:"School Admin",name:"Ms. Oak",school:"demo2"},
       {id:"u6",role:"ReSchool Admin",name:"Tabitha"}
@@ -224,7 +224,7 @@ function seed(){
       {id:"R-2004",user:"u3",school:"demo2",date:ago(10),lines:[line("Calculators",1)]}
     ],
     // Student IDs that weren't on the school's roster at sign-up, waiting for the school to confirm
-    joinRequests:[{id:"J-1",user:"u8",school:"haa",sid:"100150",date:ago(3)}],
+    joinRequests:[{id:"J-1",user:"u8",school:"haa",sid:"100150",dob:"2011-01-09",date:ago(3)}],
     seq:3000
   };
   d.baseline=copy(d.inventory); // the starting stock that "Reset demo data" returns to
@@ -247,7 +247,7 @@ const plural=(n,w)=>`${n} ${w}${n===1?"":"s"}`;
 const sum=(a,f)=>a.reduce((t,x)=>t+f(x),0);
 function toast(t){const el=$("#toast");el.textContent=t;el.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(()=>el.hidden=true,2800)}
 function fail(msg){throw new Error(msg)}
-const PILL={"Pledged":"p-wait","Pending":"p-wait","Waitlisted":"p-line","Partially Received":"p-part","Partially Approved":"p-part","Received":"p-done","Approved":"p-done","Closed":"p-bad","Denied":"p-bad"};
+const PILL={"Cancelled":"p-off","Pledged":"p-wait","Pending":"p-wait","Waitlisted":"p-line","Partially Received":"p-part","Partially Approved":"p-part","Received":"p-done","Approved":"p-done","Closed":"p-bad","Denied":"p-bad"};
 const pill=s=>`<span class="pill ${PILL[s]||"p-wait"}">${s}</span>`;
 
 /* =========================================================
@@ -289,13 +289,13 @@ function lineInfo(r,l){
   return {pos:pos+1,len:q.length,avail:Math.max(0,stock(r.school,l.item)-ahead)};
 }
 function lineStatus(r,l){
-  if(!l.open) return l.approved===l.qty?"Approved":l.approved?"Partially Approved":"Denied";
+  if(!l.open) return l.approved===l.qty?"Approved":l.approved?"Partially Approved":l.cancelled?"Cancelled":"Denied";
   if(l.approved) return "Partially Approved";
   return lineInfo(r,l).avail>0?"Pending":"Waitlisted";
 }
 function reqStatus(r){
   const open=r.lines.filter(l=>l.open), q=sum(r.lines,l=>l.qty), a=sum(r.lines,l=>l.approved);
-  if(!open.length) return a===q?"Approved":a?"Partially Approved":"Denied";
+  if(!open.length) return a===q?"Approved":a?"Partially Approved":r.lines.every(l=>l.cancelled)?"Cancelled":"Denied";
   if(a) return "Partially Approved";
   return open.some(l=>lineStatus(r,l)==="Pending")?"Pending":"Waitlisted";
 }
@@ -366,41 +366,86 @@ function approve(r,l,n){
   save();
 }
 function deny(r,l){l.open=false;save()}
-// Rule 6: sign up with a name, or with a student ID at a school.
-// An ID on that school's roster matches right away. An ID that isn't still signs up,
-// and waits for the school admin to confirm it, which adds it to the roster.
+// Rule 7: students can cancel what hasn't been approved yet, but never edit a request,
+// so nobody can change an old request to keep their place in line.
+function cancelLine(r,l){
+  if(!me||r.user!==me.id) fail("You can only cancel your own requests.");
+  if(!l.open) fail("That item is already closed.");
+  l.open=false; l.cancelled=true; save();
+}
+function cancelRequest(r){r.lines.filter(l=>l.open).forEach(l=>cancelLine(r,l))}
+// Rule 6: students sign up with their first and last name, plus their student ID if they have one.
+// An ID on the chosen school's roster only matches if the name and date of birth match the roster too.
+// An ID that's on a different school's roster is refused. An ID on no roster waits for the school to approve it.
 function validateClaim(u,s,sid){
   if(!/^[A-Za-z0-9-]{3,12}$/.test(sid)) fail("Student ID must be 3 to 12 letters or numbers.");
   if(!db.schools.some(x=>x.id===s)) fail("Choose your school.");
   if(db.users.some(x=>x.sid===sid&&x.claim===s&&x.id!==u.id)) fail(`An account at ${school(s).name} already uses that student ID.`);
 }
-function claimSid(u,s,sid){ // returns "matched" or "pending"
+const norm=t=>String(t||"").trim().toLowerCase().replace(/\s+/g," ");
+// Checks a student's details against the rosters. Throws if they can't claim this ID.
+function verifyStudent(u,s,sid,first,last,dob){
+  validateClaim(u,s,sid);
+  if(!first||!last) fail("Enter your first and last name.");
+  if(!dob) fail("Enter your date of birth.");
+  const e=rosterEntry(s,sid);
+  if(!e){
+    if(db.schools.some(x=>x.id!==s&&rosterEntry(x.id,sid))) fail("That student ID doesn't match the school you selected. Check the school, or leave the ID blank and sign up with your name only.");
+    return "unlisted";
+  }
+  const ok=norm(e.first)===norm(first)&&norm(e.last)===norm(last)&&(!e.dob||e.dob===dob);
+  if(!ok) fail("Those details don't match the school's records for that student ID. Check your name and date of birth, or leave the ID blank and sign up with your name only.");
+  return "listed";
+}
+function claimSid(u,s,sid,dob){ // returns "matched" or "pending". Call verifyStudent first.
   validateClaim(u,s,sid);
   db.joinRequests=db.joinRequests.filter(j=>j.user!==u.id);
-  u.sid=sid; u.claim=s;
-  if(rosterEntry(s,sid)) return "matched";
-  db.joinRequests.push({id:"J-"+(++db.seq),user:u.id,school:s,sid,date:new Date().toISOString()});
+  u.sid=sid; u.claim=s; if(dob) u.dob=dob;
+  const e=rosterEntry(s,sid);
+  if(e){if(e.first||e.last)u.name=`${e.first} ${e.last}`.trim();return "matched"} // use the school's spelling
+  db.joinRequests.push({id:"J-"+(++db.seq),user:u.id,school:s,sid,dob:dob||"",date:new Date().toISOString()});
   return "pending";
 }
-function signUp(first,last,sid,s){
+// Optional contact details. Blank is fine; anything entered must look right.
+function cleanContact(c,withOrg){
+  const out={phone:(c.phone||"").trim(),email:(c.email||"").trim()};
+  if(withOrg) out.org=(c.org||"").trim();
+  if(out.email&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(out.email)) fail("That email address doesn't look right.");
+  if(out.phone&&(out.phone.replace(/\D/g,"").length<7||/[^0-9()+\-.\s]/.test(out.phone))) fail("That phone number doesn't look right.");
+  return out;
+}
+function signUp(first,last,sid,s,dob,contact={}){
   first=first.trim(); last=last.trim(); sid=sid.trim();
-  if(!sid&&(!first||!last)) fail("Enter your first and last name, or your student ID.");
-  const u={id:"u"+(++db.seq),role:"Student",name:[first,last].filter(Boolean).join(" "),sid:"",claim:""};
-  const result=sid?claimSid(u,s,sid):"none";
+  if(!first||!last) fail("Enter your first and last name.");
+  const u={id:"u"+(db.seq+1),role:"Student",name:`${first} ${last}`,sid:"",claim:"",...cleanContact(contact,false)};
+  if(sid) verifyStudent(u,s,sid,first,last,dob);
+  db.seq++;
+  const result=sid?claimSid(u,s,sid,dob):"none";
   db.users.push(u); save(); return {u,result};
 }
-function signUpDonor(first,last){
+function signUpDonor(first,last,contact={}){
   first=first.trim(); last=last.trim();
   if(!first||!last) fail("Enter your first and last name.");
-  const u={id:"u"+(++db.seq),role:"Donor",name:`${first} ${last}`};
+  const u={id:"u"+(++db.seq),role:"Donor",name:`${first} ${last}`,...cleanContact(contact,true)};
   db.users.push(u); save(); return u;
 }
 function approveAccess(j){
   const u=db.users.find(x=>x.id===j.user)||{name:""};
-  if(!rosterEntry(j.school,j.sid)){const [first="",...rest]=(u.name||"").split(" ");db.rosters[j.school].push({sid:j.sid,first,last:rest.join(" "),active:true})}
+  if(!rosterEntry(j.school,j.sid)){const [first="",...rest]=(u.name||"").split(" ");db.rosters[j.school].push({sid:j.sid,first,last:rest.join(" "),dob:j.dob||u.dob||"",active:true})}
   db.joinRequests=db.joinRequests.filter(x=>x!==j); save();
 }
 function denyAccess(j){db.joinRequests=db.joinRequests.filter(x=>x!==j);save()}
+
+function contactLine(u){
+  if(!u) return "";
+  const bits=[u.org,u.phone,u.email].filter(Boolean).map(esc);
+  return bits.length?`<div class="meta">${bits.join(" · ")}</div>`:"";
+}
+const fmtDob=d=>d?new Date(d+"T12:00:00").toLocaleDateString(undefined,{month:"short",day:"numeric",year:"numeric"}):"";
+const contactInputs=(p,u={},withOrg)=>`${withOrg?`<label for="${p}-org">Business or organization <span class="hint">(optional)</span><input id="${p}-org" type="text" maxlength="60" autocomplete="organization" value="${esc(u.org||"")}"></label>`:""}
+  <div class="two"><label for="${p}-phone">Phone <span class="hint">(optional)</span><input id="${p}-phone" type="tel" maxlength="20" autocomplete="tel" value="${esc(u.phone||"")}"></label>
+  <label for="${p}-email">Email <span class="hint">(optional)</span><input id="${p}-email" type="email" maxlength="80" autocomplete="email" value="${esc(u.email||"")}"></label></div>`;
+const readContact=p=>({org:$(`#${p}-org`)?$(`#${p}-org`).value:"",phone:$(`#${p}-phone`).value,email:$(`#${p}-email`).value});
 
 /* ---------- School branding ---------- */
 function colorsOf(s){const sc=typeof s==="string"?school(s):s;return {primary:sc.primary||DEFAULT_COLORS.primary,secondary:sc.secondary||DEFAULT_COLORS.secondary}}
@@ -463,23 +508,23 @@ function renderLogin(){
 }
 function renderSignup(){
   $("#app").innerHTML=`<h1>Student sign up</h1>
-  <p class="sub">Enter your student ID and school to be matched to your school's roster. No ID? Sign up with your name. You can still donate, and add your ID later to request supplies.</p>
+  <p class="sub">Add your student ID to request supplies from your school. No ID yet? Leave it blank. You can still donate, and add your ID later.</p>
   <form class="card" onsubmit="doSignUp(event)">
     <div class="two">
-      <label for="su-sid">Student ID<input id="su-sid" type="text" inputmode="numeric" autocomplete="off" maxlength="12" placeholder="e.g. 100103" oninput="claimWarn='';resetWarn('su')"></label>
+      <label for="su-first">First name<input id="su-first" type="text" maxlength="30" autocomplete="given-name" required></label>
+      <label for="su-last">Last name<input id="su-last" type="text" maxlength="30" autocomplete="family-name" required></label>
+    </div>
+    <div class="two">
+      <label for="su-sid">Student ID <span class="hint">(optional)</span><input id="su-sid" type="text" inputmode="numeric" autocomplete="off" maxlength="12" placeholder="e.g. 100103" oninput="claimWarn='';resetWarn('su');$('#su-dob-wrap').hidden=!this.value.trim()"></label>
       <label for="su-school">School<select id="su-school" onchange="claimWarn='';resetWarn('su')">${db.schools.map(s=>`<option value="${s.id}">${esc(s.name)}</option>`).join("")}</select></label>
     </div>
+    <label for="su-dob" id="su-dob-wrap" hidden>Date of birth <span class="hint">(needed with a student ID, so no one else can use your ID)</span><input id="su-dob" type="date" max="${new Date().toISOString().slice(0,10)}"></label>
     <div class="callout line" id="su-warn" hidden></div>
-    <div class="or">or</div>
-    <div class="two">
-      <label for="su-first">First name<input id="su-first" type="text" maxlength="30" autocomplete="given-name"></label>
-      <label for="su-last">Last name<input id="su-last" type="text" maxlength="30" autocomplete="family-name"></label>
-    </div>
-    <span class="hint">If you enter a student ID, your name is optional, but it helps your school confirm you.</span>
+    ${contactInputs("su",{},false)}
     <div class="callout err" id="su-err" hidden></div>
     <div class="actions"><button class="primary" type="submit" id="su-go">Create account</button><button type="button" class="ghost" onclick="authScreen='login';render()">Back</button></div>
   </form>
-  <p class="hint" style="margin-top:14px">Demo: 100103 at Houston Adventist and 200202 at Demo School #2 are on the roster. 100104 at Houston Adventist is inactive. Any other number shows the approval flow.</p>`;
+  <p class="hint" style="margin-top:14px">Demo: Emily Jones, ID 100103 at Houston Adventist, born June 21, 2011, is on the roster but hasn't signed up. Any ID not on a roster shows the approval flow.</p>`;
 }
 function renderDonorSignup(){
   $("#app").innerHTML=`<h1>Sign up to donate</h1>
@@ -489,6 +534,8 @@ function renderDonorSignup(){
       <label for="dn-first">First name<input id="dn-first" type="text" maxlength="30" autocomplete="given-name" required></label>
       <label for="dn-last">Last name<input id="dn-last" type="text" maxlength="30" autocomplete="family-name" required></label>
     </div>
+    ${contactInputs("dn",{},true)}
+    <span class="hint">Contact details help the school thank you or arrange a drop-off.</span>
     <div class="callout err" id="dn-err" hidden></div>
     <div class="actions"><button class="primary" type="submit">Create account</button><button type="button" class="ghost" onclick="authScreen='login';render()">Back</button></div>
   </form>`;
@@ -603,9 +650,14 @@ function sDonate(){
 function sRequest(){
   cart={mode:null};
   const st=studentState(me);
+  const [fn="",...ln]=(me.name||"").split(" ");
   const link=`<form class="card" onsubmit="doLink(event)"><div class="two">
+    <label for="l-first">First name<input id="l-first" type="text" maxlength="30" value="${esc(fn)}" required></label>
+    <label for="l-last">Last name<input id="l-last" type="text" maxlength="30" value="${esc(ln.join(" "))}" required></label></div>
+    <div class="two">
     <label for="l-sid">Student ID<input id="l-sid" type="text" inputmode="numeric" autocomplete="off" maxlength="12" required oninput="claimWarn='';resetWarn('l')"></label>
     <label for="l-school">School<select id="l-school" onchange="claimWarn='';resetWarn('l')">${db.schools.map(s=>`<option value="${s.id}" ${s.id===me.claim?"selected":""}>${esc(s.name)}</option>`).join("")}</select></label></div>
+    <label for="l-dob">Date of birth<input id="l-dob" type="date" required max="${new Date().toISOString().slice(0,10)}" value="${esc(me.dob||"")}"></label>
     <div class="callout line" id="l-warn" hidden></div>
     <div class="actions"><button class="primary" type="submit" id="l-go">Link ID</button></div></form>`;
   const sc=me.claim?esc(school(me.claim).name):"";
@@ -682,12 +734,12 @@ function aRoster(){
   ${picker}
   ${pend.length?`<h2>Waiting for approval</h2><p class="sub">These students signed up with an ID that isn't on the roster. Approving adds the ID to the roster as active.</p>
   <div class="list" style="margin-bottom:8px">${pend.map(j=>{const u=db.users.find(x=>x.id===j.user);return `<div class="row"><div class="info"><div>
-    <div class="title"><span class="qty">${esc(j.sid)}</span> · ${u&&u.name?esc(u.name):'<span class="meta">No name given</span>'}</div><div class="meta">Signed up ${fmtDate(j.date)}</div></div>
+    <div class="title"><span class="qty">${esc(j.sid)}</span> · ${u&&u.name?esc(u.name):'<span class="meta">No name given</span>'}</div><div class="meta">${j.dob?"Born "+fmtDob(j.dob)+" · ":""}Signed up ${fmtDate(j.date)}</div>${contactLine(u)}</div>
     <div class="actions"><button class="primary small" onclick="doAccess('${j.id}',true)">Approve</button><button class="small ghost danger" onclick="doAccess('${j.id}',false)">Deny</button></div></div></div>`}).join("")}</div>
   <h2>Roster</h2>`:""}
   <div class="actions" style="margin-bottom:14px"><button class="primary" onclick="openRoster('${s}')">Add student ID</button></div>
-  ${list.length?`<div class="tablebox"><table><thead><tr><th>Student ID</th><th>Name</th><th>Account</th><th>Status</th><th></th></tr></thead><tbody>
-  ${list.map((e,k)=>`<tr><td class="mono">${esc(e.sid)}</td><td>${esc(`${e.first} ${e.last}`.trim())||'<span class="meta">No name</span>'}</td>
+  ${list.length?`<div class="tablebox"><table><thead><tr><th>Student ID</th><th>Name</th><th>Date of birth</th><th>Account</th><th>Status</th><th></th></tr></thead><tbody>
+  ${list.map((e,k)=>`<tr><td class="mono">${esc(e.sid)}</td><td>${esc(`${e.first} ${e.last}`.trim())||'<span class="meta">No name</span>'}</td><td class="meta" style="white-space:nowrap">${fmtDob(e.dob)||"Not set"}</td>
     <td class="meta">${db.users.some(u=>u.sid===e.sid&&u.claim===s)?"Signed up":"Not yet"}</td>
     <td><button class="pill ${e.active?"p-done":"p-off"}" onclick="toggleActive('${s}',${k})" aria-label="${e.active?"Mark inactive":"Mark active"}">${e.active?"Active":"Inactive"}</button></td>
     <td><button class="small" onclick="openRoster('${s}',${k})">Edit</button></td></tr>`).join("")}
@@ -720,7 +772,7 @@ function dUsers(){
   return `<h1>Users</h1><p class="sub">Demo accounts. Students and donors can also sign up themselves.</p>
   <div class="actions" style="margin-bottom:14px"><button class="primary" onclick="openUser()">Add user</button></div>
   <div class="tablebox"><table><thead><tr><th>Name</th><th>Role</th><th>School</th><th></th></tr></thead><tbody>
-  ${db.users.map(u=>`<tr><td><b>${esc(displayName(u))}</b>${u.sid?`<div class="meta mono">ID ${esc(u.sid)}</div>`:""}</td><td>${ROLE_LABEL[u.role]}</td><td>${where(u)}</td><td><button class="small" onclick="openUser('${u.id}')">Edit</button></td></tr>`).join("")}
+  ${db.users.map(u=>`<tr><td><b>${esc(displayName(u))}</b>${u.sid?`<div class="meta mono">ID ${esc(u.sid)}</div>`:""}${contactLine(u)}</td><td>${ROLE_LABEL[u.role]}</td><td>${where(u)}</td><td><button class="small" onclick="openUser('${u.id}')">Edit</button></td></tr>`).join("")}
   </tbody></table></div>`;
 }
 
@@ -733,20 +785,24 @@ function pledgeCard(p,admin){
     ${admin&&open&&left>0?`<button class="small" onclick="openReceive('${p.id}',${k})">Receive</button>`:""}</div>`;
   }).join("");
   return `<div class="row"><div class="top"><div><div class="title">${admin?"From "+esc(nameOf(p.user)):"To "+esc(school(p.school).name)}</div>
-  <div class="meta">${p.id} · ${fmtDate(p.date)} · ${plural(p.lines.length,"item")}</div></div>${pill(pledgeStatus(p))}</div>${lines}
+  <div class="meta">${p.id} · ${fmtDate(p.date)} · ${plural(p.lines.length,"item")}</div>${admin?contactLine(db.users.find(u=>u.id===p.user)):""}</div>${pill(pledgeStatus(p))}</div>${lines}
   ${admin&&open?`<div class="actions" style="padding-top:4px"><button class="primary small" onclick="doReceiveAll('${p.id}')">Receive everything</button><button class="small ghost danger" onclick="doClose('${p.id}')">Close donation</button></div>`:""}</div>`;
 }
 function reqCard(r,admin){
   const lines=r.lines.map((l,k)=>{
     const st=lineStatus(r,l), info=l.open?lineInfo(r,l):null, max=approvable(r,l);
-    let extra=l.open?` · #${info.pos} in line${info.len>1?` of ${info.len}`:""}`:(l.approved&&l.approved<l.qty?" · rest declined":"");
+    let extra=l.open?` · #${info.pos} in line${info.len>1?` of ${info.len}`:""}`:(l.approved&&l.approved<l.qty?(l.cancelled?" · rest cancelled":" · rest declined"):"");
     if(admin&&l.open) extra+=` · ${stock(r.school,l.item)} on hand`;
     let btns="";
+    const mine=!admin&&me&&r.user===me.id, openCount=r.lines.filter(x=>x.open).length;
+    if(mine&&l.open&&openCount>1) btns=`<button class="small ghost danger" onclick="armCancel(this,'${r.id}',${k})">${l.approved?"Cancel rest":"Cancel"}</button>`;
     if(admin&&l.open) btns=`<div class="actions"><button class="small ${max?"primary":""}" ${max?"":"disabled"} onclick="openApprove('${r.id}',${k})">${max?"Approve":info.pos>1?"Waiting on #1":"Out of stock"}</button><button class="small ghost danger" onclick="doDeny('${r.id}',${k})">${l.approved?"Decline rest":"Deny"}</button></div>`;
     return `<div class="ln"><div class="what"><b>${esc(l.item)}</b> ${pill(st)}<div class="meta"><span class="qty">${l.approved} / ${l.qty}</span> approved${extra}</div></div>${btns}</div>`;
   }).join("");
+  const canCancel=!admin&&me&&r.user===me.id&&r.lines.some(l=>l.open);
   return `<div class="row"><div class="top"><div><div class="title">${admin?esc(nameOf(r.user)):esc(school(r.school).name)}</div>
-  <div class="meta">${r.id} · ${fmtDate(r.date)} · ${plural(r.lines.length,"item")}</div></div>${pill(reqStatus(r))}</div>${lines}</div>`;
+  <div class="meta">${r.id} · ${fmtDate(r.date)} · ${plural(r.lines.length,"item")}</div>${admin?contactLine(db.users.find(u=>u.id===r.user)):""}</div>${pill(reqStatus(r))}</div>${lines}
+  ${canCancel?`<div class="actions" style="padding-top:4px"><button class="small ghost danger" onclick="armCancel(this,'${r.id}',null)">Cancel request</button><span class="hint">You can cancel anything not yet approved. Requests can't be edited, so your place in line stays fair.</span></div>`:""}</div>`;
 }
 
 /* ---------- Actions ---------- */
@@ -760,23 +816,29 @@ function claimToast(u){
 function doSignUp(e){
   e.preventDefault();
   const err=$("#su-err"); err.hidden=true;
-  const sid=$("#su-sid").value.trim(), s=$("#su-school").value;
+  const sid=$("#su-sid").value.trim(), s=$("#su-school").value, first=$("#su-first").value.trim(), last=$("#su-last").value.trim(), dob=$("#su-dob").value;
   try{
-    if(sid){validateClaim({id:null},s,sid); if(needsWarn("su",s,sid)) return}
-    const {u}=signUp($("#su-first").value,$("#su-last").value,sid,s);
+    cleanContact(readContact("su"),false);
+    if(sid){verifyStudent({id:null},s,sid,first,last,dob); if(needsWarn("su",s,sid)) return}
+    const {u}=signUp(first,last,sid,s,dob,readContact("su"));
     claimWarn=""; login(u.id); toast(claimToast(u));
   }catch(x){err.textContent=x.message;err.hidden=false}
 }
 function doDonorSignUp(e){
   e.preventDefault();
-  try{const u=signUpDonor($("#dn-first").value,$("#dn-last").value);login(u.id);toast(`Welcome, ${u.name.split(" ")[0]}! Pick a school to donate to.`)}
+  try{const u=signUpDonor($("#dn-first").value,$("#dn-last").value,readContact("dn"));login(u.id);toast(`Welcome, ${u.name.split(" ")[0]}! Pick a school to donate to.`)}
   catch(x){const el=$("#dn-err");el.textContent=x.message;el.hidden=false}
 }
 function doLink(e){
   e.preventDefault();
-  const sid=$("#l-sid").value.trim(), s=$("#l-school").value;
-  try{validateClaim(me,s,sid); if(needsWarn("l",s,sid)) return; claimSid(me,s,sid); save(); claimWarn=""; toast(claimToast(me)); render()}
+  const sid=$("#l-sid").value.trim(), s=$("#l-school").value, first=$("#l-first").value.trim(), last=$("#l-last").value.trim(), dob=$("#l-dob").value;
+  try{verifyStudent(me,s,sid,first,last,dob); if(needsWarn("l",s,sid)) return; me.name=`${first} ${last}`; claimSid(me,s,sid,dob); save(); claimWarn=""; toast(claimToast(me)); render()}
   catch(x){toast(x.message)}
+}
+// Two taps to cancel, so a stray tap doesn't lose someone's place in line
+function armCancel(btn,id,k){
+  if(!btn.classList.contains("armed")){btn.classList.add("armed");btn.textContent="Tap again to cancel";setTimeout(()=>{if(btn.isConnected){btn.classList.remove("armed");btn.textContent=k==null?"Cancel request":"Cancel"}},4000);return}
+  try{const r=db.requests.find(x=>x.id===id);if(k==null)cancelRequest(r);else cancelLine(r,r.lines[k]);toast(k==null?"Request cancelled":`${r.lines[k].item} cancelled`);render()}catch(e){toast(e.message)}
 }
 function doAccess(id,ok){const j=db.joinRequests.find(x=>x.id===id);if(!j)return;(ok?approveAccess:denyAccess)(j);toast(ok?`${j.sid} added to the roster`:`${j.sid} denied`);render()}
 function doReceiveAll(id){try{const p=db.pledges.find(x=>x.id===id);receiveAll(p);toast("Everything received. Inventory updated.");render()}catch(err){toast(err.message)}}
@@ -898,17 +960,19 @@ function readIcon(input){
   rd.readAsDataURL(f);
 }
 function openRoster(s,k){
-  const e=k!=null?db.rosters[s][k]:{sid:"",first:"",last:"",active:true};
+  const e=k!=null?db.rosters[s][k]:{sid:"",first:"",last:"",dob:"",active:true};
   openSheet(k!=null?"Edit student ID":"Add student ID",`
     <label for="ro-sid">Student ID<input id="ro-sid" type="text" maxlength="12" value="${esc(e.sid)}" autocomplete="off" required></label>
-    <div class="two"><label for="ro-first">First name <span class="hint">(optional)</span><input id="ro-first" type="text" maxlength="30" value="${esc(e.first)}"></label>
-    <label for="ro-last">Last name <span class="hint">(optional)</span><input id="ro-last" type="text" maxlength="30" value="${esc(e.last)}"></label></div>
+    <div class="two"><label for="ro-first">First name<input id="ro-first" type="text" maxlength="30" value="${esc(e.first)}" required></label>
+    <label for="ro-last">Last name<input id="ro-last" type="text" maxlength="30" value="${esc(e.last)}" required></label></div>
+    <label for="ro-dob">Date of birth <span class="hint">(students must match it to sign up with this ID)</span><input id="ro-dob" type="date" value="${esc(e.dob||"")}"></label>
     <label class="check"><input type="checkbox" id="ro-active" ${e.active?"checked":""}> Active (can request supplies)</label>`,
   k!=null?"Save":"Add",()=>{
     const sid=$("#ro-sid").value.trim();
     if(!/^[A-Za-z0-9-]{3,12}$/.test(sid)) fail("Student ID must be 3 to 12 letters or numbers.");
     const dupe=rosterEntry(s,sid); if(dupe&&dupe!==e) fail(`ID ${sid} is already on this roster.`);
-    const next={sid,first:$("#ro-first").value.trim(),last:$("#ro-last").value.trim(),active:$("#ro-active").checked};
+    const next={sid,first:$("#ro-first").value.trim(),last:$("#ro-last").value.trim(),dob:$("#ro-dob").value,active:$("#ro-active").checked};
+    if(!next.first||!next.last) fail("Enter the student's first and last name. Students must match it to sign up.");
     if(k!=null){if(e.sid!==sid)db.users.forEach(u=>{if(u.sid===e.sid&&u.claim===s)u.sid=sid});Object.assign(e,next)}else db.rosters[s].push(next);
     db.joinRequests=db.joinRequests.filter(j=>!(j.school===s&&j.sid===sid)); // adding the ID by hand settles any waiting approval
     save(); return k!=null?"Student updated":`${sid} added`;
@@ -922,23 +986,26 @@ function openUser(id){
     <label for="us-name">Name <span class="hint" id="us-name-hint"></span><input id="us-name" type="text" maxlength="40" value="${esc(u.name)}"></label>
     <label for="us-role">Role<select id="us-role" onchange="roleFields()" ${self?"disabled":""}>${ROLES.map(r=>`<option value="${r}" ${u.role===r?"selected":""}>${ROLE_LABEL[r]}</option>`).join("")}</select></label>
     <label for="us-school" id="us-school-wrap"><span id="us-school-label">School</span><select id="us-school">${db.schools.map(s=>`<option value="${s.id}" ${sel===s.id?"selected":""}>${esc(s.name)}</option>`).join("")}</select></label>
-    <label for="us-sid" id="us-sid-wrap">Student ID <span class="hint">(optional; if it isn't on the roster it goes to the school for approval)</span><input id="us-sid" type="text" maxlength="12" value="${esc(u.sid||"")}" autocomplete="off"></label>`,
+    <label for="us-sid" id="us-sid-wrap">Student ID <span class="hint">(optional; if it isn't on the roster it goes to the school for approval)</span><input id="us-sid" type="text" maxlength="12" value="${esc(u.sid||"")}" autocomplete="off"></label>
+    <div id="us-contact" style="display:flex;flex-direction:column;gap:14px">${contactInputs("us",u,true)}</div>`,
   id?"Save":"Add user",()=>{
     const role=self?u.role:$("#us-role").value, name=$("#us-name").value.trim(), s=$("#us-school").value;
     const target=id?u:{id:"u"+(db.seq+1),role};
+    const contact=(role==="Student"||role==="Donor")?cleanContact(readContact("us"),role==="Donor"):{};
     if(role==="Student"){
       const sid=$("#us-sid").value.trim();
       if(!name&&!sid) fail("Enter a name or a student ID.");
       if(sid) validateClaim(target,s,sid);
       if(!id){db.seq++;db.users.push(target)}
-      Object.assign(target,{name,role}); delete target.school;
+      Object.assign(target,{name,role},contact); delete target.school; delete target.org;
       if(!sid){target.sid="";target.claim="";db.joinRequests=db.joinRequests.filter(j=>j.user!==target.id)}
       else if(sid!==target.sid||s!==target.claim) claimSid(target,s,sid);
     }else{
       if(!name) fail("Enter a name.");
       if(!id){db.seq++;db.users.push(target)}
       delete target.sid; delete target.claim; db.joinRequests=db.joinRequests.filter(j=>j.user!==target.id);
-      Object.assign(target,{name,role}); if(role==="School Admin") target.school=s; else delete target.school;
+      delete target.org; delete target.phone; delete target.email; delete target.dob;
+      Object.assign(target,{name,role},contact); if(role==="School Admin") target.school=s; else delete target.school;
     }
     save(); return id?"User updated":displayName(target)+" added";
   }, id&&!self?`<button type="button" class="ghost danger" style="margin-left:auto" onclick="armRemove(this,()=>{db.users=db.users.filter(x=>x.id!=='${id}');db.joinRequests=db.joinRequests.filter(j=>j.user!=='${id}');save();toast('User removed')})">Remove</button>`:"");
@@ -962,7 +1029,7 @@ function copyExport(){
   const pick=()=>{t.focus();t.select();toast("Text selected. Copy it with your device's copy command.")};
   try{navigator.clipboard.writeText(t.value).then(()=>toast("Copied to clipboard"),pick)}catch(e){pick()}
 }
-function roleFields(){const r=$("#us-role").value;$("#us-school-wrap").hidden=r==="ReSchool Admin"||r==="Donor";$("#us-school-label").textContent=r==="Student"?"School":"School they manage";$("#us-sid-wrap").hidden=r!=="Student";$("#us-name-hint").textContent=r==="Student"?"(optional with a student ID)":""}
+function roleFields(){const r=$("#us-role").value;$("#us-contact").hidden=!(r==="Student"||r==="Donor");if($("#us-org"))$("#us-org").closest("label").hidden=r!=="Donor";$("#us-school-wrap").hidden=r==="ReSchool Admin"||r==="Donor";$("#us-school-label").textContent=r==="Student"?"School":"School they manage";$("#us-sid-wrap").hidden=r!=="Student";$("#us-name-hint").textContent=r==="Student"?"(optional with a student ID)":""}
 render();
 </script>
 </body>
