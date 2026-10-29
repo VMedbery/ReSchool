@@ -34,19 +34,17 @@ Both flags only appear on items the school accepts as donations. High priority i
 
 ## The rules
 
-All business rules live in one section of `index.html`, marked **CORE RULES**:
-
 1. Pledging and requesting never change inventory.
 2. Anyone can donate to any school. Donations have no limit unless the school sets one for an item.
 3. Students request only from the school where their ID is active, within per-request limits. Out-of-stock items wait in line.
 4. Receiving adds to inventory and can be partial.
-5. Approving takes from inventory, can be partial, and goes in order of who asked first.
+5. Approving takes from inventory, can be partial, and goes in order of who asked first. 
 6. Students sign up with their name. A student ID on the roster only matches with the right name and date of birth; IDs not on any roster need school approval.
 7. Students can cancel what hasn't been approved, but never edit a request.
 
 ## Demo accounts
 
-There are no passwords. Pick an account on the sign-in screen.
+This is a proof-of concept and there are no passwords for simplicity. Pick an account on the sign-in screen to impersonate the selected user. 
 
 | Account | Role |
 |---|---|
@@ -56,7 +54,7 @@ There are no passwords. Pick an account on the sign-in screen.
 | Robert Davis | ID waiting for Houston Adventist's approval |
 | Pat Rivera | Community donor, Rivera Family Hardware |
 | Mr. Castillo / Ms. Oak | School admins for Houston Adventist / Demo School #2 |
-| Tabitha | ReSchool admin (reset, export settings) |
+| Tabitha | ReSchool admin (configuration & demo reset) |
 
 To try a matched sign-up: **Emily Jones**, student ID **100103** at Houston Adventist Academy, born **June 21, 2011**.
 
@@ -73,14 +71,3 @@ Both options are at the bottom of the page when signed in as the ReSchool admin.
 - There are no real passwords or security. Matching name and date of birth makes it harder, not impossible, to sign up as someone else.
 - A real version would need a shared database and real sign-in.
 
-## Changing the default setup
-
-Changes made inside the app are saved only in that browser. To make a setup the starting point for everyone:
-
-1. Sign in as the ReSchool admin and choose **Export default settings**.
-2. Copy the text.
-3. Paste it into `DEFAULT_SETUP` near the top of the script in `index.html` (or hand it to Claude to do).
-
-## Running it
-
-It's a single file. Open `index.html` in any browser, or host it on any static host such as GitHub Pages.
