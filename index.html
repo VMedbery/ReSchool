@@ -716,7 +716,7 @@ function aHome(){
   return `<h1>Dashboard</h1><p class="sub">You only see this school's donations, requests and students.</p>
   ${pend?`<div class="callout line info" style="margin-bottom:14px"><span>${plural(pend,"student ID")} waiting for your approval.</span><button class="small" onclick="go('roster')">Review</button></div>`:""}
   ${banner(s,`<button class="small" onclick="openSchool('${s}')">Edit school info</button>`)}
-  <h2>Today</h2>
+  <h2>Summary</h2>
   <div class="stats"><div class="stat"><div class="eyebrow">Open donations</div><div class="n">${op}</div></div>
   <div class="stat"><div class="eyebrow">Ready to approve</div><div class="n">${lines.filter(x=>approvable(x.r,x.l)>0).length}</div></div>
   <div class="stat"><div class="eyebrow">Waitlisted</div><div class="n">${lines.filter(x=>lineStatus(x.r,x.l)==="Waitlisted").length}</div></div></div>
